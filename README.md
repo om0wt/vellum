@@ -144,6 +144,37 @@ the `X-Forwarded-For` header.
 
 ## Cross-compile Windows .exe
 
+There are two ways to build the Windows distribution. Use whichever
+matches your situation.
+
+### Recommended: GitHub Actions (real Windows runner)
+
+A workflow at `.github/workflows/build-windows.yml` builds the Windows
+`.exe` on a real `windows-latest` runner. No Wine, no Rosetta, no
+container — it just runs PyInstaller natively on Windows. Trigger it by
+**cutting a release tag**:
+
+```bash
+make git-release
+```
+
+`make git-release` reads the version from `src/_version.py`, refuses if
+the working tree is dirty or the tag already exists, creates an
+annotated `vX.Y.Z` tag, and pushes it to `origin`. The push triggers the
+workflow, which builds the `.exe`, zips `dist/PDF-to-DOCX/` as
+`Vellum-PDF-to-DOCX-vX.Y.Z-windows.zip`, and attaches it to a fresh
+GitHub Release.
+
+You can also trigger the workflow manually from the **Actions** tab in
+the GitHub UI (the `workflow_dispatch` button) — useful for smoke
+testing the build without cutting a real release. In that case the zip
+is uploaded as a workflow artifact (downloadable from the run page) but
+no Release is created.
+
+### Local: Wine + Docker (offline, slower)
+
+If you don't have a GitHub repo or want to build offline:
+
 ```bash
 ./build-windows/build.sh
 ```

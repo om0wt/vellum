@@ -1,0 +1,142 @@
+name: Build Windows release
+
+# Triggers:
+#   * push to a tag matching v*  (e.g. v1.0.0) — typically created by
+#     `make git-release` from a clean working tree.
+#   * workflow_dispatch — manual button in the Actions tab, useful for
+#     testing the build without cutting a real release.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  # Needed by softprops/action-gh-release to create the GitHub Release.
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Vellum on windows-latest
+    runs-on: windows-latest
+    defaults:
+      run:
+        # Bash is preinstalled on windows-latest runners (Git Bash) and
+        # uses the same backslash continuation syntax as Linux/macOS,
+        # which keeps the build command identical to the local
+        # build-windows/Dockerfile invocation.
+        shell: bash
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install runtime + build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Reuse the Windows-specific requirements file from the local
+          # Wine build (pdf2docx, PyMuPDF, python-docx). The numpy<2.0
+          # pin in there is harmless on real Windows — it was a Wine
+          # workaround for the missing ucrtbase.crealf symbol.
+          pip install -r build-windows/requirements-windows.txt
+          pip install pyinstaller
+
+      - name: Show versions (sanity check + log artifact)
+        run: |
+          python --version
+          pip show pyinstaller pdf2docx PyMuPDF python-docx | grep -E '^(Name|Version):'
+
+      - name: Build with PyInstaller
+        # Same flags as build-windows/Dockerfile so the GH-built artifact
+        # matches what `./build-windows/build.sh` produces locally.
+        run: |
+          pyinstaller \
+            --noconfirm \
+            --onedir \
+            --noupx \
+            --windowed \
+            --name PDF-to-DOCX \
+            --paths src \
+            --collect-all pdf2docx \
+            --collect-all fitz \
+            --collect-all docx \
+            --exclude-module IPython \
+            --exclude-module jupyter \
+            --exclude-module notebook \
+            --exclude-module matplotlib \
+            --exclude-module scipy \
+            --exclude-module pandas \
+            --exclude-module pytest \
+            --exclude-module _pytest \
+            --exclude-module sphinx \
+            --exclude-module pylint \
+            --exclude-module setuptools \
+            --exclude-module pip \
+            --exclude-module wheel \
+            --exclude-module babel \
+            --exclude-module tkinter.test \
+            --exclude-module numpy.distutils \
+            --exclude-module numpy.f2py \
+            --exclude-module numpy.testing \
+            --exclude-module numpy.tests \
+            src/gui.py
+
+      - name: Show built artifacts
+        run: |
+          ls -la dist/PDF-to-DOCX | head -20
+          du -sh dist/PDF-to-DOCX
+
+      - name: Determine release name
+        id: rel
+        run: |
+          # Use the tag name on tag pushes (e.g. v1.0.0); for manual
+          # dispatch fall back to a short SHA so the artifact name is
+          # always meaningful.
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            REF_NAME="${GITHUB_REF#refs/tags/}"
+          else
+            REF_NAME="dev-${GITHUB_SHA::7}"
+          fi
+          echo "ref_name=${REF_NAME}" >> "$GITHUB_OUTPUT"
+          echo "zip_name=Vellum-PDF-to-DOCX-${REF_NAME}-windows.zip" >> "$GITHUB_OUTPUT"
+
+      - name: Zip the dist folder
+        # PowerShell's Compress-Archive is the simplest way to make a
+        # real .zip on the windows-latest runner. The bash `zip` is
+        # also available but Compress-Archive avoids any path-quoting
+        # surprises.
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist/PDF-to-DOCX -DestinationPath ${{ steps.rel.outputs.zip_name }}
+          Get-Item ${{ steps.rel.outputs.zip_name }} | Format-List Name,Length
+
+      - name: Upload artifact (always — even for manual dispatch)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.rel.outputs.zip_name }}
+          path: ${{ steps.rel.outputs.zip_name }}
+          retention-days: 30
+
+      - name: Create GitHub Release (only on tag push)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.rel.outputs.zip_name }}
+          generate_release_notes: true
+          name: Vellum ${{ steps.rel.outputs.ref_name }}
+          body: |
+            Vellum **${{ steps.rel.outputs.ref_name }}** — Windows build.
+
+            Download `${{ steps.rel.outputs.zip_name }}` below, extract
+            it, and double-click `PDF-to-DOCX.exe` inside the
+            `PDF-to-DOCX/` folder.
+
+            For OCR support on Windows, install Tesseract separately
+            from <https://github.com/UB-Mannheim/tesseract/wiki>. The
+            app will detect it on PATH and unlock the OCR option.
