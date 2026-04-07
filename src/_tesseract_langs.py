@@ -4,12 +4,29 @@ Used by both the desktop GUI (``gui.py``) and the web app (``app.py``)
 to render the OCR language picker with human-friendly labels instead
 of the raw tesseract codes (`eng`, `slk`, `chi_sim`, …).
 
-Codes that aren't in this map (e.g. custom training data like ``snum``)
-fall back to displaying the code itself.
+Two kinds of entries:
+
+* **Lowercase ISO codes** like ``eng``, ``slk``, ``chi_sim`` — full
+  language models trained on real text. Display name is the language's
+  native name where practical (e.g. ``deu`` → ``Deutsch``,
+  ``jpn`` → ``日本語``).
+* **Capitalized script names** like ``Arabic``, ``HanS``,
+  ``Japanese_vert`` — script-only models from tesseract's "Scripts"
+  collection. They recognize ANY language written in that script.
+  Suffixed with ``(script)`` so users can distinguish them from
+  language-specific entries when scrolling the picker.
+
+Codes that aren't in this map (e.g. custom training data like
+``snum``) fall back to displaying the code itself.
+
+Sources:
+* https://tesseract-ocr.github.io/tessdoc/Data-Files.html
+* https://tesseract-ocr.github.io/tessdoc/Data-Files-in-different-versions.html
 """
 from __future__ import annotations
 
 TESSERACT_LANG_NAMES: dict[str, str] = {
+    # ----- Languages (lowercase ISO codes) -----
     "afr": "Afrikaans",
     "amh": "አማርኛ",
     "ara": "العربية",
@@ -76,9 +93,10 @@ TESSERACT_LANG_NAMES: dict[str, str] = {
     "kaz": "Қазақша",
     "khm": "ខ្មែរ",
     "kir": "Кыргызча",
-    "kmr": "Kurdî",
+    "kmr": "Kurdî (Kurmancî)",
     "kor": "한국어",
     "kor_vert": "한국어 (세로)",
+    "kur": "Kurdish",
     "lao": "ລາວ",
     "lat": "Latina",
     "lav": "Latviešu",
@@ -122,6 +140,7 @@ TESSERACT_LANG_NAMES: dict[str, str] = {
     "tat": "Татарча",
     "tel": "తెలుగు",
     "tgk": "Тоҷикӣ",
+    "tgl": "Tagalog",
     "tha": "ไทย",
     "tir": "ትግርኛ",
     "ton": "Lea Faka-Tonga",
@@ -134,6 +153,49 @@ TESSERACT_LANG_NAMES: dict[str, str] = {
     "vie": "Tiếng Việt",
     "yid": "ייִדיש",
     "yor": "Yorùbá",
+
+    # ----- Scripts (capitalized codes from tesseract's Scripts collection) -----
+    # These are script-only models (no language-specific dictionary).
+    # Useful when you want to OCR text in a given script regardless of
+    # the underlying language. Suffixed with "(script)" so they're
+    # visually distinct from language entries in the picker.
+    "Arabic": "Arabic (script)",
+    "Armenian": "Armenian (script)",
+    "Bengali": "Bengali (script)",
+    "Canadian_Aboriginal": "Canadian Aboriginal (script)",
+    "Cherokee": "Cherokee (script)",
+    "Cyrillic": "Cyrillic (script)",
+    "Devanagari": "Devanagari (script)",
+    "Ethiopic": "Ethiopic (script)",
+    "Fraktur": "Fraktur (script)",
+    "Georgian": "Georgian (script)",
+    "Greek": "Greek (script)",
+    "Gujarati": "Gujarati (script)",
+    "Gurmukhi": "Gurmukhi (script)",
+    "HanS": "Chinese Simplified (script)",
+    "HanS_vert": "Chinese Simplified vertical (script)",
+    "HanT": "Chinese Traditional (script)",
+    "HanT_vert": "Chinese Traditional vertical (script)",
+    "Hangul": "Hangul (script)",
+    "Hangul_vert": "Hangul vertical (script)",
+    "Hebrew": "Hebrew (script)",
+    "Japanese": "Japanese (script)",
+    "Japanese_vert": "Japanese vertical (script)",
+    "Kannada": "Kannada (script)",
+    "Khmer": "Khmer (script)",
+    "Lao": "Lao (script)",
+    "Latin": "Latin (script)",
+    "Malayalam": "Malayalam (script)",
+    "Myanmar": "Myanmar (script)",
+    "Oriya": "Oriya (script)",
+    "Sinhala": "Sinhala (script)",
+    "Syriac": "Syriac (script)",
+    "Tamil": "Tamil (script)",
+    "Telugu": "Telugu (script)",
+    "Thaana": "Thaana (script)",
+    "Thai": "Thai (script)",
+    "Tibetan": "Tibetan (script)",
+    "Vietnamese": "Vietnamese (script)",
 }
 
 

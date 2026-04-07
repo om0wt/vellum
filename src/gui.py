@@ -144,6 +144,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "no_stream_checkbox": "Detekovať len ohraničené tabuľky (odporúčané)",
         "ocr_checkbox": "Použiť OCR (pre skenované PDF)",
         "ocr_lang_label": "Jazyk OCR:",
+        "ocr_multi_hint": "Tip: pre viacero jazykov držte Cmd/Ctrl a klikajte; Shift+klik pre rozsah.",
         "show_log": "▸ Zobraziť záznam",
         "hide_log": "▾ Skryť záznam",
         "convert_button": "Konvertovať",
@@ -176,6 +177,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "no_stream_checkbox": "Detect only tables with visible borders (recommended)",
         "ocr_checkbox": "Apply OCR (for scanned PDFs)",
         "ocr_lang_label": "OCR language:",
+        "ocr_multi_hint": "Tip: for multiple languages hold Cmd/Ctrl and click; Shift+Click for ranges.",
         "show_log": "▸ Show log",
         "hide_log": "▾ Hide log",
         "convert_button": "Convert",
@@ -220,25 +222,27 @@ class ConverterApp(tk.Tk):
         # row will be built at all. A list = available language codes.
         self._tesseract_langs: list[str] | None = list_tesseract_languages()
 
-        # Build display ↔ code mappings for the OCR language picker, sorted
-        # by display name. Display names are native (e.g. "Slovenčina",
-        # "English"); unknown codes fall back to the code itself.
-        self._ocr_display_to_code: dict[str, str] = {}
-        self._ocr_display_names: list[str] = []
+        # OCR language pairs in display-name order. Each entry is
+        # (code, display_name). Used to populate the multi-select
+        # listbox and look up codes from listbox indices when the
+        # user starts a conversion. Unknown codes (e.g. custom
+        # tesseract training data with no entry in TESSERACT_LANG_NAMES)
+        # fall back to displaying the code itself.
+        self._ocr_lang_pairs: list[tuple[str, str]] = []
         if self._tesseract_langs:
-            pairs = sorted(
+            self._ocr_lang_pairs = sorted(
                 ((c, TESSERACT_LANG_NAMES.get(c, c)) for c in self._tesseract_langs),
                 key=lambda p: p[1].lower(),
             )
-            self._ocr_display_names = [display for _, display in pairs]
-            self._ocr_display_to_code = {display: code for code, display in pairs}
 
         # The window has two heights: a compact one with the log hidden
         # (the default), and an expanded one when the user clicks the
-        # "Show log" disclosure button.
+        # "Show log" disclosure button. The OCR multi-select listbox
+        # needs more vertical space than the old combobox so the
+        # tesseract-present heights are bumped accordingly.
         self._window_width = 620
-        self._compact_height = 400 if self._tesseract_langs else 360
-        self._expanded_height = 580 if self._tesseract_langs else 540
+        self._compact_height = 470 if self._tesseract_langs else 360
+        self._expanded_height = 640 if self._tesseract_langs else 540
         x = (self.winfo_screenwidth() - self._window_width) // 2
         y = (self.winfo_screenheight() - self._compact_height) // 2
         self.geometry(f"{self._window_width}x{self._compact_height}+{x}+{y}")
@@ -255,11 +259,10 @@ class ConverterApp(tk.Tk):
         self._status_key = "status_initial"
         self._status_kwargs: dict[str, object] = {}
 
-        # OCR state — only meaningful when tesseract was detected.
-        # The StringVar holds the *display name* (what the user sees);
-        # _run_conversion looks up the code via _ocr_display_to_code.
+        # OCR state — only meaningful when tesseract was detected. The
+        # actual selection lives in the listbox built in _build_ui;
+        # this just tracks whether OCR mode is on.
         self._ocr_enabled = tk.BooleanVar(value=False)
-        self._ocr_lang = tk.StringVar(value=self._default_ocr_display_name())
 
         self._build_ui()
         self._apply_language()
@@ -269,17 +272,18 @@ class ConverterApp(tk.Tk):
         # and the window is realized.
         self.after(0, self._focus_window)
 
-    def _default_ocr_display_name(self) -> str:
-        """Pick a sensible default tesseract language and return its display
-        name: prefer Slovak, then English, then the first installed
-        language alphabetically by display name."""
-        if not self._tesseract_langs:
-            return ""
+    def _default_ocr_index(self) -> int | None:
+        """Return the listbox index of the default OCR language, or
+        None if no tesseract languages are available. Prefers Slovak,
+        then English, then the first language in the list (which is
+        already sorted by display name)."""
+        if not self._ocr_lang_pairs:
+            return None
         for preferred in ("slk", "eng"):
-            if preferred in self._tesseract_langs:
-                return TESSERACT_LANG_NAMES.get(preferred, preferred)
-        # _ocr_display_names is already sorted by display name
-        return self._ocr_display_names[0] if self._ocr_display_names else ""
+            for i, (code, _display) in enumerate(self._ocr_lang_pairs):
+                if code == preferred:
+                    return i
+        return 0
 
     def _focus_window(self) -> None:
         """Bring the window to the foreground on launch.
@@ -365,37 +369,62 @@ class ConverterApp(tk.Tk):
         self._browse_btn = ttk.Button(row, text="", command=self._pick_input)
         self._browse_btn.pack(side="left", padx=(8, 0))
 
-        # OCR row — only built when tesseract is installed.
+        # OCR section — only built when tesseract is installed.
+        # Layout is now vertical (checkbox row, then a multi-select
+        # listbox, then a hint) because the listbox needs more
+        # vertical space than the old combobox and the user has
+        # ~160 languages to scroll through.
         self._ocr_chk: ttk.Checkbutton | None = None
         self._ocr_lang_label_widget: ttk.Label | None = None
-        self._ocr_lang_combo: ttk.Combobox | None = None
+        self._ocr_lang_listbox: tk.Listbox | None = None
+        self._ocr_lang_hint_widget: ttk.Label | None = None
         if self._tesseract_langs:
-            ocr_row = ttk.Frame(outer)
-            ocr_row.pack(fill="x", pady=(8, 0))
             self._ocr_chk = ttk.Checkbutton(
-                ocr_row,
+                outer,
                 text="",
                 variable=self._ocr_enabled,
                 command=self._on_ocr_toggle,
             )
-            self._ocr_chk.pack(side="left")
-            self._ocr_lang_label_widget = ttk.Label(ocr_row, text="")
-            self._ocr_lang_label_widget.pack(side="left", padx=(16, 4))
-            # Width: longest display name + a little padding, capped to a
-            # reasonable maximum so the row doesn't blow out for languages
-            # with very long native names.
-            combo_width = min(
-                max((len(d) for d in self._ocr_display_names), default=8) + 2,
-                22,
+            self._ocr_chk.pack(anchor="w", pady=(8, 4))
+
+            self._ocr_lang_label_widget = ttk.Label(outer, text="", foreground="#666")
+            self._ocr_lang_label_widget.pack(anchor="w", padx=(20, 0))
+
+            # Listbox + vertical scrollbar in their own frame so the
+            # scrollbar sits flush against the listbox.
+            lb_frame = ttk.Frame(outer)
+            lb_frame.pack(fill="x", padx=(20, 0), pady=(2, 0))
+            scrollbar = ttk.Scrollbar(lb_frame, orient="vertical")
+            self._ocr_lang_listbox = tk.Listbox(
+                lb_frame,
+                selectmode="extended",  # Cmd/Ctrl+Click multi, Shift+Click range
+                height=6,
+                exportselection=False,  # don't lose selection on focus loss
+                yscrollcommand=scrollbar.set,
             )
-            self._ocr_lang_combo = ttk.Combobox(
-                ocr_row,
-                textvariable=self._ocr_lang,
-                values=self._ocr_display_names,
-                state="disabled",  # enabled only when ocr checkbox is checked
-                width=combo_width,
+            scrollbar.config(command=self._ocr_lang_listbox.yview)
+            scrollbar.pack(side="right", fill="y")
+            self._ocr_lang_listbox.pack(side="left", fill="both", expand=True)
+
+            # Populate with display names — _run_conversion uses the
+            # listbox indices + self._ocr_lang_pairs to recover the
+            # tesseract codes.
+            for _code, display in self._ocr_lang_pairs:
+                self._ocr_lang_listbox.insert("end", display)
+
+            # Pre-select the default language (slk → eng → first).
+            default_idx = self._default_ocr_index()
+            if default_idx is not None:
+                self._ocr_lang_listbox.selection_set(default_idx)
+                self._ocr_lang_listbox.see(default_idx)
+
+            # Start disabled — the OCR checkbox toggles state.
+            self._ocr_lang_listbox.config(state="disabled")
+
+            self._ocr_lang_hint_widget = ttk.Label(
+                outer, text="", foreground="#999",
             )
-            self._ocr_lang_combo.pack(side="left")
+            self._ocr_lang_hint_widget.pack(anchor="w", padx=(20, 0), pady=(2, 0))
 
         # Options
         self._no_stream_chk = ttk.Checkbutton(
@@ -465,6 +494,8 @@ class ConverterApp(tk.Tk):
             self._ocr_chk.config(text=self._t("ocr_checkbox"))
         if self._ocr_lang_label_widget is not None:
             self._ocr_lang_label_widget.config(text=self._t("ocr_lang_label"))
+        if self._ocr_lang_hint_widget is not None:
+            self._ocr_lang_hint_widget.config(text=self._t("ocr_multi_hint"))
         self._convert_btn.config(text=self._t("convert_button"))
         self._log_toggle_btn.config(
             text=self._t("hide_log" if self._log_visible else "show_log")
@@ -475,13 +506,13 @@ class ConverterApp(tk.Tk):
         self._status.set(self._t(self._status_key, **self._status_kwargs))
 
     def _on_ocr_toggle(self) -> None:
-        """Enable/disable the OCR language combobox to match the checkbox."""
-        if self._ocr_lang_combo is None:
+        """Enable/disable the OCR language listbox to match the checkbox."""
+        if self._ocr_lang_listbox is None:
             return
         if self._ocr_enabled.get():
-            self._ocr_lang_combo.config(state="readonly")
+            self._ocr_lang_listbox.config(state="normal")
         else:
-            self._ocr_lang_combo.config(state="disabled")
+            self._ocr_lang_listbox.config(state="disabled")
 
     # ----- log helpers (main thread only) --------------------------------
 
@@ -606,8 +637,23 @@ class ConverterApp(tk.Tk):
                     # requires real glyph metrics, which OCR text doesn't have)
                     # so we build the DOCX directly from tesseract's TSV output.
                     self.after(0, self._set_status, "status_ocr_starting")
-                    display = self._ocr_lang.get()
-                    lang_code = self._ocr_display_to_code.get(display, "eng")
+                    # Read the multi-select listbox and join the chosen
+                    # codes with "+" — the syntax tesseract accepts for
+                    # multi-language passes (e.g. "slk+eng").
+                    selected_codes: list[str] = []
+                    if self._ocr_lang_listbox is not None:
+                        for idx in self._ocr_lang_listbox.curselection():
+                            if 0 <= idx < len(self._ocr_lang_pairs):
+                                selected_codes.append(self._ocr_lang_pairs[idx][0])
+                    if not selected_codes:
+                        # Empty selection — fall back to the default so
+                        # the conversion doesn't fail with no language.
+                        default_idx = self._default_ocr_index()
+                        if default_idx is not None:
+                            selected_codes = [self._ocr_lang_pairs[default_idx][0]]
+                        else:
+                            selected_codes = ["eng"]
+                    lang_code = "+".join(selected_codes)
                     ocr_to_docx(
                         pdf_path,
                         out_path,
