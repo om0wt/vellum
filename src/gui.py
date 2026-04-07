@@ -147,6 +147,59 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ocr_multi_hint": "Tip: pre viacero jazykov držte Cmd/Ctrl a klikajte; Shift+klik pre rozsah.",
         "show_log": "▸ Zobraziť záznam",
         "hide_log": "▾ Skryť záznam",
+        "help_button": "?",
+        "help_button_tooltip": "Pomocník",
+        "help_window_title": "Vellum — Pomocník",
+        "help_close": "Zavrieť",
+        "version_by": "od",
+        "manual_heading": "Ako to funguje",
+        "manual_intro": (
+            "Vellum konvertuje PDF súbory do upraviteľných Word (.docx) "
+            "dokumentov a snaží sa zachovať tabuľky, nadpisy a štruktúru "
+            "odrážok. Vyberte súbor, prípadne upravte možnosti konverzie "
+            "a kliknite na Konvertovať — výsledný .docx sa uloží na "
+            "miesto, ktoré určíte."
+        ),
+        "manual_ocr_heading": "Kedy zapnúť OCR",
+        "manual_ocr_body": (
+            "Zapnite „Použiť OCR“, ak je vaše PDF skenované — teda "
+            "každá stránka je obrázok dokumentu, nie skutočný text. "
+            "Príznaky: text sa nedá označiť a kopírovať v bežnom "
+            "prehliadači, prípadne sa po konverzii bez OCR výstup javí "
+            "prázdny. Pri zapnutom OCR sa text rozpozná pomocou "
+            "Tesseractu z vykreslených obrázkov stránok.\n\n"
+            "V zozname vyberte jazyk OCR, ktorý zodpovedá obsahu "
+            "dokumentu. Pre dvojjazyčné dokumenty môžete označiť "
+            "viacero jazykov naraz — držte Cmd (Mac) alebo Ctrl "
+            "(Windows) a klikajte. Tesseract ich potom rozpoznáva "
+            "spoločne (interne ich kombinuje syntaxou „slk+eng“). "
+            "Pridanie ďalších jazykov OCR mierne spomaľuje, takže "
+            "vyberajte len tie, ktoré v dokumente skutočne sú."
+        ),
+        "manual_ocr_note": (
+            "OCR je výrazne pomalšie ako bežná cesta. Pri normálnych "
+            "textových PDF (napr. exportovaných z Wordu alebo "
+            "prehliadača) nechajte OCR vypnuté."
+        ),
+        "manual_tables_heading": "Detekcia tabuliek",
+        "manual_tables_body": (
+            "Predvolene Vellum detekuje len tabuľky s viditeľným "
+            "ohraničením. To dáva najčistejší výstup pre väčšinu "
+            "dokumentov — školské osnovy, technické správy, formuláre. "
+            "V niektorých prípadoch ale dostanete lepší výsledok, keď "
+            "túto možnosť vypnete: konvertor sa potom pokúsi rozpoznať "
+            "tabuľky aj zo zarovnania textu. Cenou za to je občasné "
+            "vynájdenie „falošných“ tabuliek z odsekov typu „popis: "
+            "hodnota“. Skúste obe nastavenia a vyberte to, ktoré sa "
+            "najviac podobá originálu."
+        ),
+        "manual_log_heading": "Záznam konverzie",
+        "manual_log_body": (
+            "Tlačidlo „Zobraziť záznam“ otvorí konzolu, v ktorej vidíte "
+            "podrobný priebeh konverzie — vrátane progresu pdf2docx, "
+            "OCR strán a prípadných chýb. Pri ladení neočakávaného "
+            "výsledku tu nájdete najviac informácií."
+        ),
         "convert_button": "Konvertovať",
         "status_initial": "Vyberte PDF na konverziu.",
         "status_ocr_starting": "Spúšťam OCR…",
@@ -180,6 +233,61 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ocr_multi_hint": "Tip: for multiple languages hold Cmd/Ctrl and click; Shift+Click for ranges.",
         "show_log": "▸ Show log",
         "hide_log": "▾ Hide log",
+        "help_button": "?",
+        "help_button_tooltip": "Help",
+        "help_window_title": "Vellum — Help",
+        "help_close": "Close",
+        "version_by": "by",
+        "manual_heading": "How it works",
+        "manual_intro": (
+            "Vellum converts PDF files into editable Word (.docx) "
+            "documents while doing its best to preserve tables, "
+            "headings, and bullet structure. Pick a file, adjust the "
+            "conversion options if needed, and click Convert — the "
+            "resulting .docx is saved wherever you choose."
+        ),
+        "manual_ocr_heading": "When to enable OCR",
+        "manual_ocr_body": (
+            "Turn on \u201cApply OCR\u201d if your PDF is a scan — "
+            "i.e. each page is an image of a document rather than "
+            "real selectable text. Symptoms: you can't highlight or "
+            "copy text from the PDF in a normal viewer, or the "
+            "non-OCR conversion comes back empty. With OCR enabled "
+            "the text is recognized via Tesseract from rendered page "
+            "images.\n\n"
+            "Pick the OCR language from the list that matches your "
+            "document. For bilingual documents you can pick more than "
+            "one at once: hold Cmd (Mac) or Ctrl (Windows) and click. "
+            "Tesseract will recognize them jointly (it combines them "
+            "internally as the \u201cslk+eng\u201d syntax). Adding "
+            "extra languages slows OCR down slightly, so only pick "
+            "the ones actually present in the document."
+        ),
+        "manual_ocr_note": (
+            "OCR is significantly slower than the regular path. For "
+            "normal text-based PDFs (exported from Word, LibreOffice, "
+            "a browser, etc.) leave OCR OFF."
+        ),
+        "manual_tables_heading": "Table detection",
+        "manual_tables_body": (
+            "By default Vellum only detects tables that have visible "
+            "borders. This gives the cleanest output for most "
+            "documents — school curricula, technical reports, forms. "
+            "In some cases you'll get a better result by turning this "
+            "option OFF: the converter will then try to recognize "
+            "tables from text alignment too. The trade-off is that it "
+            "can occasionally invent false tables out of label/value "
+            "paragraphs. Try both settings and pick whichever looks "
+            "closer to the source."
+        ),
+        "manual_log_heading": "Conversion log",
+        "manual_log_body": (
+            "The \u201cShow log\u201d button opens a console that "
+            "shows the detailed conversion progress — including "
+            "pdf2docx steps, OCR per-page progress, and any errors. "
+            "When debugging an unexpected result, this is where the "
+            "most information lives."
+        ),
         "convert_button": "Convert",
         "status_initial": "Pick a PDF to convert.",
         "status_ocr_starting": "Starting OCR…",
@@ -238,17 +346,22 @@ class ConverterApp(tk.Tk):
         # The window has two heights: a compact one with the log hidden
         # (the default), and an expanded one when the user clicks the
         # "Show log" disclosure button. The OCR multi-select listbox
-        # needs more vertical space than the old combobox so the
-        # tesseract-present heights are bumped accordingly.
+        # adds about 130px of vertical content compared to the old
+        # combobox (listbox 120 + label 22 + hint 22 vs combobox 30),
+        # so the tesseract-present heights below include that headroom
+        # plus a little slack so the "Show log" toggle button isn't
+        # clipped on macOS / Linux / Windows.
         self._window_width = 620
-        self._compact_height = 470 if self._tesseract_langs else 360
-        self._expanded_height = 640 if self._tesseract_langs else 540
+        self._compact_height = 540 if self._tesseract_langs else 360
+        self._expanded_height = 720 if self._tesseract_langs else 540
         x = (self.winfo_screenwidth() - self._window_width) // 2
         y = (self.winfo_screenheight() - self._compact_height) // 2
         self.geometry(f"{self._window_width}x{self._compact_height}+{x}+{y}")
         # Resizable so the user can grow the log widget when needed.
+        # minsize floor is the compact-height target so resizing down
+        # never clips the toggle button.
         self.resizable(True, True)
-        self.minsize(540, 320)
+        self.minsize(540, 520 if self._tesseract_langs else 320)
         self._log_visible = False
 
         self._input_path = tk.StringVar()
@@ -331,9 +444,18 @@ class ConverterApp(tk.Tk):
         outer = ttk.Frame(self, padding=16)
         outer.pack(fill="both", expand=True)
 
-        # Top row: language selector aligned right
+        # Top row: Help button on the left, language selector right.
         top_row = ttk.Frame(outer)
         top_row.pack(fill="x")
+        # Help button — opens a Toplevel window with the user manual
+        # in the currently-selected UI language. The label is just
+        # "?" so it stays small and doesn't need translation in itself,
+        # but the manual content inside the popup IS translated.
+        self._help_btn = ttk.Button(
+            top_row, text="?", width=3, command=self._show_help_window,
+        )
+        self._help_btn.pack(side="left")
+
         self._lang_selector = ttk.Combobox(
             top_row,
             values=list(LANGUAGE_NAMES.keys()),
@@ -446,11 +568,13 @@ class ConverterApp(tk.Tk):
         ttk.Label(
             status_row, textvariable=self._status, foreground="#666"
         ).pack(side="left")
-        ttk.Label(
-            status_row,
-            text=f"{__codename__} v{__version__} ({__release_date__})",
-            foreground="#999",
-        ).pack(side="right")
+        # Footer label — codename, version, release date, AND author.
+        # The "by" connector is translated so the line reads naturally
+        # in both Slovak ("od") and English ("by").
+        self._version_label = ttk.Label(
+            status_row, text="", foreground="#999",
+        )
+        self._version_label.pack(side="right")
 
         # "Show log ▸" / "Hide log ▾" disclosure button — collapses the
         # log widget by default to keep the window compact, lets the
@@ -500,6 +624,15 @@ class ConverterApp(tk.Tk):
         self._log_toggle_btn.config(
             text=self._t("hide_log" if self._log_visible else "show_log")
         )
+        # Footer label: "Vellum v1.1.0 (2026-04-07) — od/by Pavol Calfa".
+        # The "by" connector is translated so it reads naturally in
+        # both languages.
+        self._version_label.config(
+            text=(
+                f"{__codename__} v{__version__} ({__release_date__}) "
+                f"— {self._t('version_by')} {__author__}"
+            )
+        )
         # Re-render the status line in the new language using the tracked
         # key and kwargs, so an in-progress "Converting…" or a "Saved: …"
         # message gets translated instead of being clobbered.
@@ -513,6 +646,100 @@ class ConverterApp(tk.Tk):
             self._ocr_lang_listbox.config(state="normal")
         else:
             self._ocr_lang_listbox.config(state="disabled")
+
+    def _show_help_window(self) -> None:
+        """Open a Toplevel window with the bilingual user manual.
+
+        Mirrors the right-column manual in the web app: explains how
+        the converter works, when to enable OCR, when to toggle off
+        the table-detection option, and how to read the conversion
+        log. Content comes from the manual_* translation keys, so it
+        renders in whichever UI language is currently selected.
+        """
+        win = tk.Toplevel(self)
+        win.title(self._t("help_window_title"))
+        win.transient(self)  # stay on top of the main window
+        win.resizable(True, True)
+
+        # Center on the parent window
+        self.update_idletasks()
+        w, h = 540, 560
+        px = self.winfo_x() + (self.winfo_width() - w) // 2
+        py = self.winfo_y() + (self.winfo_height() - h) // 2
+        win.geometry(f"{w}x{h}+{px}+{py}")
+        win.minsize(420, 360)
+
+        outer = ttk.Frame(win, padding=16)
+        outer.pack(fill="both", expand=True)
+
+        # Scrollable text body. Plain Text widget (not ScrolledText)
+        # so we can configure tags for headings vs body without the
+        # ScrolledText wrapper getting in the way.
+        text = tk.Text(
+            outer,
+            wrap="word",
+            relief="flat",
+            background="#fafafa",
+            foreground="#222",
+            font=("TkDefaultFont", 11),
+            padx=8,
+            pady=8,
+        )
+        scrollbar = ttk.Scrollbar(outer, orient="vertical", command=text.yview)
+        text.config(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+        text.pack(side="left", fill="both", expand=True)
+
+        # Tag styles for headings, body, and the OCR-note italic line.
+        text.tag_configure(
+            "h1",
+            font=("TkDefaultFont", 14, "bold"),
+            foreground="#222",
+            spacing1=4,
+            spacing3=6,
+        )
+        text.tag_configure(
+            "h2",
+            font=("TkDefaultFont", 12, "bold"),
+            foreground="#444",
+            spacing1=10,
+            spacing3=4,
+        )
+        text.tag_configure(
+            "body",
+            font=("TkDefaultFont", 11),
+            foreground="#333",
+            spacing3=4,
+        )
+        text.tag_configure(
+            "note",
+            font=("TkDefaultFont", 11, "italic"),
+            foreground="#6a958c",
+            spacing1=2,
+            spacing3=8,
+        )
+
+        sections = [
+            ("h1", self._t("manual_heading")),
+            ("body", self._t("manual_intro")),
+            ("h2", self._t("manual_ocr_heading")),
+            ("body", self._t("manual_ocr_body")),
+            ("note", self._t("manual_ocr_note")),
+            ("h2", self._t("manual_tables_heading")),
+            ("body", self._t("manual_tables_body")),
+            ("h2", self._t("manual_log_heading")),
+            ("body", self._t("manual_log_body")),
+        ]
+        for tag, content in sections:
+            text.insert("end", content + "\n\n", tag)
+
+        text.config(state="disabled")  # read-only
+
+        # Close button at the bottom.
+        btn = ttk.Button(
+            win, text=self._t("help_close"), command=win.destroy,
+        )
+        btn.pack(side="bottom", pady=(0, 12))
 
     # ----- log helpers (main thread only) --------------------------------
 
