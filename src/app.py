@@ -276,10 +276,56 @@ else:
 def _client_ip() -> str:
     """Return the best-known client IP for the current request.
 
-    With TRUST_PROXY enabled, this is the parsed-out X-Forwarded-For
-    address. Without it, this is the immediate TCP peer (which is the
-    reverse proxy when there is one).
+    Reads the standard reverse-proxy headers in priority order:
+
+      1. ``X-Forwarded-For`` — set by nginx via
+         ``$proxy_add_x_forwarded_for``. Take the LEFTMOST entry, which
+         is the original client (the rightmost would be the most
+         recent proxy = nginx itself = useless to log).
+      2. ``X-Real-IP`` — single-value header set by nginx alongside
+         X-Forwarded-For; use as a fallback in case some upstream
+         strips the chain.
+      3. ``request.remote_addr`` — the immediate TCP peer. When the
+         container is behind nginx via the host loopback this is the
+         docker bridge gateway (172.21.0.1), so it's only useful as a
+         last resort.
+      4. Literal ``"unknown"``.
+
+    Why this is independent of ProxyFix:
+
+    Werkzeug's ``ProxyFix`` does the same lookup but is silent when
+    the ``TRUST_PROXY`` env var isn't set — and a missing env var (or
+    one that didn't propagate to the running container) means the
+    docker bridge IP gets logged with no warning. Reading the headers
+    explicitly here makes the data flow visible in this function and
+    works regardless of middleware ordering or env-var propagation
+    bugs.
+
+    Spoofing safety: with the published port bound to ``127.0.0.1``
+    only (see ``docker/docker-compose.yml``), the only way a request
+    can enter this container is through nginx, which sets the chain
+    fresh from its own ``$remote_addr`` via
+    ``$proxy_add_x_forwarded_for``. A malicious client that sends a
+    forged ``X-Forwarded-For`` header to nginx ends up with
+    ``X-Forwarded-For: <forged>, <real>`` in the upstream request —
+    we take the leftmost entry, so we'd log the forged value. **This
+    helper alone is therefore only safe behind a proxy you trust.**
+    If you ever publish the container directly to the internet,
+    switch ``proxy_set_header X-Forwarded-For $remote_addr`` (NOT
+    ``$proxy_add_x_forwarded_for``) in nginx so the chain is reset
+    rather than appended.
     """
+    # X-Forwarded-For format: "client, proxy1, proxy2, …"
+    xff = request.headers.get("X-Forwarded-For", "").strip()
+    if xff:
+        first = xff.split(",")[0].strip()
+        if first:
+            return first
+
+    xri = request.headers.get("X-Real-IP", "").strip()
+    if xri:
+        return xri
+
     return request.remote_addr or "unknown"
 
 
