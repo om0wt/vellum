@@ -92,6 +92,69 @@ jobs:
           ls -la dist/PDF-to-DOCX | head -20
           du -sh dist/PDF-to-DOCX
 
+      - name: Sign Windows .exe (when WINDOWS_CERT_PFX secret is set)
+        # Signs PDF-to-DOCX.exe (the launcher) with a code-signing
+        # certificate provided via GitHub Secrets, so Windows
+        # SmartScreen / Defender stops calling it an "unknown
+        # publisher" binary. Gracefully skips when the secret is not
+        # configured — the build still produces an unsigned .exe in
+        # that case.
+        #
+        # To enable: add two repository secrets:
+        #   WINDOWS_CERT_PFX       — base64 of your .pfx file
+        #                            (`base64 -w0 mycert.pfx | pbcopy` on macOS)
+        #   WINDOWS_CERT_PASSWORD  — the .pfx export password
+        #
+        # See README.md "Code signing" for cert source recommendations.
+        shell: pwsh
+        env:
+          PFX_BASE64: ${{ secrets.WINDOWS_CERT_PFX }}
+          PFX_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        run: |
+          if (-not $env:PFX_BASE64) {
+            Write-Host "::notice::WINDOWS_CERT_PFX secret not set — skipping code signing."
+            Write-Host "        The .exe in this build will be unsigned and will trigger"
+            Write-Host "        SmartScreen / Defender warnings on end users' machines."
+            Write-Host "        See README.md 'Code signing' to enable."
+            exit 0
+          }
+
+          # Decode the base64 PFX into a temp file outside the repo.
+          $pfxPath = Join-Path $env:RUNNER_TEMP "codesign.pfx"
+          [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:PFX_BASE64))
+
+          # Locate the newest signtool.exe shipped with the Windows SDK
+          # on the runner image. Path varies by SDK version, so glob it.
+          $signtool = Get-ChildItem `
+            "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" `
+            -ErrorAction Stop |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1 -ExpandProperty FullName
+          Write-Host "Using signtool: $signtool"
+
+          # Sign with SHA-256 + RFC3161 timestamp from Sectigo
+          # (free, well-known TSA). Without a timestamp, the signature
+          # would expire when the cert does.
+          & $signtool sign `
+            /f $pfxPath `
+            /p $env:PFX_PASSWORD `
+            /tr http://timestamp.sectigo.com `
+            /td sha256 `
+            /fd sha256 `
+            /d "Vellum — PDF to DOCX Converter" `
+            /du "https://github.com/om0wt/vellum" `
+            dist/PDF-to-DOCX/PDF-to-DOCX.exe
+          if ($LASTEXITCODE -ne 0) { throw "signtool sign failed" }
+
+          # Verify the signature is valid and the timestamp is present.
+          & $signtool verify /pa /v dist/PDF-to-DOCX/PDF-to-DOCX.exe
+          if ($LASTEXITCODE -ne 0) { throw "signtool verify failed" }
+
+          # Wipe the temp PFX. Secrets shouldn't outlive the step that
+          # uses them, even on a single-use runner.
+          Remove-Item $pfxPath -Force
+          Write-Host "::notice::PDF-to-DOCX.exe signed and verified."
+
       - name: Determine release name
         id: rel
         run: |

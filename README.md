@@ -172,6 +172,76 @@ testing the build without cutting a real release. In that case the zip
 is uploaded as a workflow artifact (downloadable from the run page) but
 no Release is created.
 
+### Code signing (optional but strongly recommended for distribution)
+
+Without a code signature, Windows SmartScreen and Defender flag every
+download as an "unknown publisher" binary and prompt the user to
+report it. Signing the `.exe` with a valid code-signing certificate
+fixes this — though the user still has to wait for SmartScreen
+**reputation** to build before warnings stop entirely (typically a
+few thousand downloads/runs over weeks/months, unless you use an EV
+cert which clears warnings instantly).
+
+The GitHub Actions workflow at `.github/workflows/build-windows.yml`
+includes a code-signing step that **gracefully skips when no
+certificate is configured** (so the build still works) and
+**automatically signs every release** when you add the certificate as
+GitHub Secrets.
+
+#### Where to get a certificate
+
+| Option | Cost | SmartScreen behavior | Notes |
+|---|---|---|---|
+| **Certum Open Source Code Signing** | Free for verified OSS projects | Reputation-based (warns until trust builds) | Best free option for MIT/Apache/etc. projects on GitHub. Requires identity verification. |
+| **Microsoft Trusted Signing** | ~$10/month | Reputation-based | Modern, simple, no hardware token. Stored in Azure Key Vault. |
+| **Sectigo / DigiCert / SSL.com (standard)** | ~$200–400/year | Reputation-based | Traditional CAs. Standard Code Signing OV cert. |
+| **EV Code Signing (any major CA)** | ~$300–600/year | **Instant trust, no warnings** | Requires a hardware USB token; awkward but the only "no warning ever" path. |
+| **Self-signed certificate** | Free | Still warns + users must trust your CA per machine | Not useful for public distribution. |
+
+For an MIT-licensed open source project like Vellum, I'd recommend
+**Certum Open Source Code Signing** (free) or **Microsoft Trusted
+Signing** (cheap, modern) as the practical first step.
+
+#### Configuring the secrets
+
+Once you have a `.pfx` (PKCS#12) file containing your certificate and
+private key, encode it and add it to GitHub:
+
+```bash
+# Encode the PFX as base64 (no line wrapping)
+base64 -w0 mycert.pfx > mycert.pfx.b64       # Linux
+base64 -i mycert.pfx -o mycert.pfx.b64       # macOS
+
+# Copy the base64 string to your clipboard
+cat mycert.pfx.b64 | pbcopy                  # macOS
+cat mycert.pfx.b64 | xclip -selection c      # Linux
+```
+
+Then in your repo on GitHub:
+
+1. Navigate to **Settings → Secrets and variables → Actions → New repository secret**
+2. Add `WINDOWS_CERT_PFX` — paste the base64 string
+3. Add `WINDOWS_CERT_PASSWORD` — your `.pfx` export password
+
+The next workflow run (manual dispatch or `make git-release` tag
+push) will automatically sign `PDF-to-DOCX.exe` before zipping it.
+You'll see `::notice::PDF-to-DOCX.exe signed and verified.` in the
+workflow log.
+
+#### Verifying the signature locally
+
+After downloading the release zip on a Windows machine:
+
+```powershell
+# Extract, then check the signature
+Get-AuthenticodeSignature .\PDF-to-DOCX\PDF-to-DOCX.exe
+```
+
+Expected: `Status: Valid` and a `SignerCertificate` line showing your
+publisher name. If the cert is from a CA in Windows's Trusted Root
+store and the timestamp is present, the signature stays valid even
+after the cert itself expires.
+
 ### Local: Wine + Docker (offline, slower)
 
 If you don't have a GitHub repo or want to build offline:
