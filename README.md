@@ -181,11 +181,35 @@ wait for SmartScreen **reputation** to build before warnings clear
 entirely (typically a few thousand downloads/runs over weeks/months,
 unless you use an EV cert which clears warnings instantly).
 
-Vellum uses **Certum Open Source Code Signing** — free for verified
-open-source projects. The walkthrough below is the path the project
-itself uses; if you're forking and want a different CA, the principles
-(get a cert, sign with `signtool`, store secrets in GitHub) are the
-same.
+Vellum uses **Certum Open Source Code Signing** — the cheapest
+legitimate code-signing option for verified open-source projects.
+**It is no longer free** (Certum changed their pricing in ~2024) but
+remains dramatically cheaper than commercial standard certs.
+
+#### Pricing (Certum, current as of 2026)
+
+| SKU | Price | What you get |
+|---|---|---|
+| **Open Source Code Signing — code** | **€25/year** | Electronic delivery (SimplySign cloud HSM only, no USB token). Cheapest path. |
+| Open Source Code Signing — set | €69/year | Above + a physical USB cryptographic token. Useful only if you want offline signing. |
+| Standard Code Signing — code | from €139/year | Same hardware-key constraint, no OSS verification, but works for closed-source projects. |
+| EV Code Signing — code/set | from €329–359/year | The "no SmartScreen warning ever" option. Requires hardware token. |
+
+For Vellum the right SKU is **"Open Source Code Signing — code"** at
+€25/year. You sign via SimplySign over the internet — your private
+key never leaves Certum's cloud HSM.
+
+If €25/year isn't acceptable, the realistic alternatives are:
+
+- **Microsoft Trusted Signing** (~$10/month ≈ €115/year) — pricier
+  per year but works directly from a CI runner with no local Windows
+  machine required. Only worth it if you do many releases.
+- **Self-signed cert** (free) — does NOT fix SmartScreen warnings;
+  each user has to manually trust your CA per machine. Useful only
+  for private/internal distribution.
+- **Don't sign** (free) — accept the SmartScreen warning and tell
+  users to click "Show more → Run anyway". Fine for a small audience
+  who knows the publisher.
 
 #### Important: post-2023 hardware-key requirement
 
