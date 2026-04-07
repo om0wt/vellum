@@ -172,44 +172,126 @@ testing the build without cutting a real release. In that case the zip
 is uploaded as a workflow artifact (downloadable from the run page) but
 no Release is created.
 
-### Code signing — Certum Open Source Code Signing
+### Code signing — free options
 
 Without a code signature, Windows SmartScreen and Defender flag every
 download as an "unknown publisher" binary and prompt the user to
-report it. Signing the `.exe` fixes this, but the user still has to
-wait for SmartScreen **reputation** to build before warnings clear
-entirely (typically a few thousand downloads/runs over weeks/months,
-unless you use an EV cert which clears warnings instantly).
+report it. Vellum doesn't currently sign its Windows release because
+all paid options have ongoing fees and signing-cert prices have
+risen sharply since the CA/Browser Forum's 2023 hardware-key rules.
 
-Vellum uses **Certum Open Source Code Signing** — the cheapest
-legitimate code-signing option for verified open-source projects.
-**It is no longer free** (Certum changed their pricing in ~2024) but
-remains dramatically cheaper than commercial standard certs.
+Realistic free options:
 
-#### Pricing (Certum, current as of 2026)
-
-| SKU | Price | What you get |
+| Option | Fixes warning? | Effort |
 |---|---|---|
-| **Open Source Code Signing — code** | **€25/year** | Electronic delivery (SimplySign cloud HSM only, no USB token). Cheapest path. |
-| Open Source Code Signing — set | €69/year | Above + a physical USB cryptographic token. Useful only if you want offline signing. |
-| Standard Code Signing — code | from €139/year | Same hardware-key constraint, no OSS verification, but works for closed-source projects. |
-| EV Code Signing — code/set | from €329–359/year | The "no SmartScreen warning ever" option. Requires hardware token. |
+| **Don't sign + document the bypass** | No, but users can click "Run anyway" | Zero (status quo) |
+| **Self-signed certificate** | No, still warns — but power users can manually trust your CA once | Medium per user |
+| **Submit each release to Microsoft Defender for analysis** | **Yes, actually fixes it** | Per-release manual submission, ~1–7 days wait |
+| **Microsoft Store (MSIX package)** | Yes (Store apps are MS-signed automatically) | $19 one-time, big distribution-model change |
 
-For Vellum the right SKU is **"Open Source Code Signing — code"** at
-€25/year. You sign via SimplySign over the internet — your private
-key never leaves Certum's cloud HSM.
+#### Recommended free path: submit each release to Microsoft Defender
 
-If €25/year isn't acceptable, the realistic alternatives are:
+<https://www.microsoft.com/en-us/wdsi/filesubmission> is Microsoft's
+official "this is not malware" submission portal. Many open source
+maintainers use it as their de-facto code-signing substitute when
+they don't want to pay for a cert.
 
-- **Microsoft Trusted Signing** (~$10/month ≈ €115/year) — pricier
-  per year but works directly from a CI runner with no local Windows
-  machine required. Only worth it if you do many releases.
-- **Self-signed cert** (free) — does NOT fix SmartScreen warnings;
-  each user has to manually trust your CA per machine. Useful only
-  for private/internal distribution.
-- **Don't sign** (free) — accept the SmartScreen warning and tell
-  users to click "Show more → Run anyway". Fine for a small audience
-  who knows the publisher.
+**About PyInstaller bundles**: Vellum builds with `--onedir`, so the
+release artifact is a *folder* (`PDF-to-DOCX/`) containing a small
+launcher `PDF-to-DOCX.exe` (~1 MB) plus an `_internal/` directory
+with ~50 MB of Python runtime DLLs (`python311.dll`, `pdf2docx`,
+`fitz`, etc). **Defender's heuristic almost always flags the
+launcher `.exe`** — the bootstrap stub that PyInstaller generates
+matches `Trojan:Win32/Wacatac.B!ml` and similar false-positive
+signatures. The DLLs in `_internal/` are legitimate Python runtime
+binaries with their own signatures and rarely trigger warnings.
+
+So you submit two things to Microsoft per release: the **launcher
+`.exe`** (Defender's actual target) and the **release `.zip`**
+(SmartScreen's download-reputation target).
+
+**Per-release flow:**
+
+1. Cut the release as usual (`make git-release`) → unsigned bundle
+   lands in the GitHub Release as
+   `Vellum-PDF-to-DOCX-vX.Y.Z-windows.zip`.
+2. On a Windows machine, download and extract the zip:
+   ```powershell
+   Expand-Archive Vellum-PDF-to-DOCX-v1.1.0-windows.zip -DestinationPath .
+   ```
+3. Go to <https://www.microsoft.com/en-us/wdsi/filesubmission>.
+4. **First submission** — the launcher:
+   - **Role**: Software developer
+   - **File**: upload `PDF-to-DOCX\PDF-to-DOCX.exe` (the ~1 MB
+     launcher inside the extracted folder, NOT the zip)
+   - **Detection name**: whatever Defender flagged it as (commonly
+     `Trojan:Win32/Wacatac.B!ml` for PyInstaller binaries)
+   - **Reason**: Incorrect detection (false positive)
+   - **Description**:
+     > Open source PDF to DOCX converter, MIT licensed, source at
+     > <https://github.com/om0wt/vellum>, built by GitHub Actions
+     > from a public workflow. The `.exe` is a PyInstaller `--onedir`
+     > launcher; the false-positive heuristic matches against the
+     > PyInstaller bootloader, not actual malicious code. The build
+     > workflow that produced this binary is at
+     > <https://github.com/om0wt/vellum/actions>.
+   - Link to the specific GitHub Release
+5. **Second submission** — the zip:
+   - Same form, upload `Vellum-PDF-to-DOCX-v1.1.0-windows.zip` this
+     time. This addresses SmartScreen's *download-reputation* layer
+     (the URL + zip hash) in addition to the executable layer.
+6. You'll get an email confirmation + tracking ID for each
+   submission.
+7. Wait 1–7 days. Microsoft analysts review. For an MIT-licensed
+   Python+PyInstaller GUI with a public CI build, they almost
+   always conclude it's a false positive and add both hashes to
+   Defender's cloud safe list.
+8. Future downloads of **those specific files** (same SHA-256
+   hashes) no longer trigger SmartScreen / Defender warnings.
+   **You have to redo this per release** because each PyInstaller
+   build has different hashes (the launcher and the zip both
+   change).
+
+This is slow and manual, but it's the only way to actually clear
+the Defender warning for free.
+
+**Tip**: don't bother re-submitting between manual workflow
+dispatches and a real release — only submit the binary that's
+actually attached to a tagged GitHub Release, since that's the one
+end users will download.
+
+#### Tell users how to bypass the warning when it does appear
+
+For releases that haven't been submitted yet (or whose Defender
+review is still pending), include this snippet in your release notes
+so users know what's happening:
+
+> **Windows SmartScreen / Defender warning?** Vellum is open source
+> and unsigned (signing certificates cost €25–400 per year and the
+> project doesn't yet have a budget for one). The binary is built by
+> a public GitHub Actions workflow from the source you can see in
+> this repo. To run it the first time:
+>
+> 1. Click **More info** on the SmartScreen dialog
+> 2. Click **Run anyway**
+>
+> Or, if Defender quarantines the file, restore it via Virus &
+> threat protection → Protection history → Allow.
+
+#### Project policy
+
+**Vellum is and will remain unsigned.** Code signing certificates
+cost €25–400/year and have no free option that the project considers
+acceptable. The Microsoft Defender submission flow above + the
+user-facing "Run anyway" instructions in release notes are the
+official solution.
+
+A dormant `signtool` workflow step in
+`.github/workflows/build-windows.yml` is kept for **forks** that may
+have access to a signing certificate (commercial, EV, or enterprise).
+It gracefully skips when the `WINDOWS_CERT_PFX` secret isn't set, so
+it costs nothing to leave in place — the upstream Vellum builds just
+never trigger it.
 
 #### Important: post-2023 hardware-key requirement
 
