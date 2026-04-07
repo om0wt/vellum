@@ -89,26 +89,41 @@
       color: #555;
       margin-bottom: 1.25rem;
     }
-    /* Inline OCR-language picker — multi-select via checkboxes so the
-       user can pick e.g. slk + eng for bilingual documents. */
+    /* OCR language picker — native multi-select. With ~160 tesseract
+       language packs installed, browser keyboard search (just type
+       letters to jump to a match) makes this scale fine. Ctrl/Cmd+Click
+       for multi-select, Shift+Click for ranges. */
     .ocr-langs {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 0.4rem 1rem;
+      display: block;
       font-size: 0.9rem;
       color: #555;
       margin-bottom: 1.25rem;
     }
-    .ocr-langs-label { color: #555; margin-right: 0.25rem; }
-    .ocr-langs label.ocr-lang {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.3rem;
-      font-weight: normal;
-      cursor: pointer;
+    .ocr-langs-label {
+      display: block;
+      color: #555;
+      margin-bottom: 0.3rem;
     }
-    .ocr-langs input[disabled] + * { color: #aaa; }
+    .ocr-langs select {
+      display: block;
+      width: 100%;
+      padding: 0.3rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: white;
+      font-size: 0.9rem;
+      font-family: system-ui, sans-serif;
+    }
+    .ocr-langs select:disabled {
+      background: #f0f0f0;
+      color: #aaa;
+    }
+    .ocr-lang-hint {
+      display: block;
+      margin-top: 0.3rem;
+      font-size: 0.8rem;
+      color: #888;
+    }
     button {
       width: 100%;
       padding: 0.75rem;
@@ -157,14 +172,13 @@
       {{ t.ocr_checkbox }}
     </label>
     <div class="ocr-langs" id="ocr-lang-row" style="margin-left: 1.5rem;">
-      <span class="ocr-langs-label">{{ t.ocr_lang_label }}</span>
-      {% for code, display in ocr_options %}
-        <label class="ocr-lang">
-          <input type="checkbox" name="ocr_language" value="{{ code }}" class="ocr-lang-cb"
-                 {% if code == ocr_default %}checked{% endif %} disabled>
-          {{ display }}
-        </label>
-      {% endfor %}
+      <label for="ocr-lang-select" class="ocr-langs-label">{{ t.ocr_lang_label }}</label>
+      <select name="ocr_language" id="ocr-lang-select" multiple size="8" disabled>
+        {% for code, display in ocr_options %}
+          <option value="{{ code }}"{% if code == ocr_default %} selected{% endif %}>{{ display }}</option>
+        {% endfor %}
+      </select>
+      <small class="ocr-lang-hint">{{ t.ocr_multi_hint }}</small>
     </div>
     {% endif %}
 
@@ -208,15 +222,13 @@
       convert:    {{ t.convert_button|tojson }},
     };
 
-    // OCR language picker — enable/disable the whole checkbox group to
-    // mirror the parent OCR checkbox.
+    // OCR language picker — enable/disable the multi-select to mirror
+    // the parent OCR checkbox.
     const ocrCheckbox = document.getElementById('ocr');
-    const ocrLangCheckboxes = document.querySelectorAll('.ocr-lang-cb');
-    if (ocrCheckbox && ocrLangCheckboxes.length) {
+    const ocrLangSelect = document.getElementById('ocr-lang-select');
+    if (ocrCheckbox && ocrLangSelect) {
       ocrCheckbox.addEventListener('change', function () {
-        ocrLangCheckboxes.forEach(function (cb) {
-          cb.disabled = !ocrCheckbox.checked;
-        });
+        ocrLangSelect.disabled = !ocrCheckbox.checked;
       });
     }
 

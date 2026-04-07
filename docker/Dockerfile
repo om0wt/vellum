@@ -7,19 +7,24 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # System packages:
-# * tesseract-ocr + language packs — required by the OCR (scanned PDF)
-#   path. Without these, the web app's OCR option is hidden because
-#   list_tesseract_languages() returns None at startup. To add more
-#   languages, append additional `tesseract-ocr-XXX` packages here
-#   (see https://packages.debian.org/search?keywords=tesseract-ocr).
+# * tesseract-ocr-all — Debian metapackage that pulls in tesseract
+#   itself plus EVERY language pack (~160 languages, adds ~250 MB to
+#   the image). Without this, list_tesseract_languages() at startup
+#   returns only whatever language packs are installed, and the web
+#   form's OCR-language picker has only those options. We install
+#   the metapackage so users can OCR any document regardless of
+#   language without rebuilding the image.
+#
+#   If you want to keep the image small, replace `tesseract-ocr-all`
+#   with a curated list of `tesseract-ocr-eng tesseract-ocr-slk
+#   tesseract-ocr-deu …` for the languages you actually use.
 #
 # pdf2docx and PyMuPDF Python wheels are self-contained on linux/amd64
 # and arm64, so we don't need any apt packages for those.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         tesseract-ocr \
-        tesseract-ocr-eng \
-        tesseract-ocr-slk \
+        tesseract-ocr-all \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .

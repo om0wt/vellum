@@ -86,6 +86,7 @@ WEB_TRANSLATIONS: dict[str, dict[str, str]] = {
         "pdf_file_label": "PDF súbor",
         "ocr_checkbox": "Použiť OCR (pre skenované PDF)",
         "ocr_lang_label": "Jazyk OCR:",
+        "ocr_multi_hint": "Tip: pre vyhľadanie môžete písať (napr. „eng“). Pre viacero jazykov držte Ctrl (Windows) alebo Cmd (Mac) a klikajte; Shift+klik pre rozsah.",
         "no_stream_checkbox": "Detekovať len ohraničené tabuľky (odporúčané)",
         "convert_button": "Konvertovať",
         "converting_text": "Konvertujem…",
@@ -112,13 +113,16 @@ WEB_TRANSLATIONS: dict[str, dict[str, str]] = {
             "Príznaky: text sa nedá označiť a kopírovať v bežnom "
             "prehliadači, prípadne sa po konverzii bez OCR výstup "
             "javí prázdny. Pri zapnutom OCR sa text rozpozná pomocou "
-            "Tesseractu z vykreslených obrázkov stránok. Označte "
-            "jazyk OCR, ktorý zodpovedá obsahu dokumentu. Pre "
-            "dvojjazyčné dokumenty môžete označiť aj viacero jazykov "
-            "naraz — Tesseract ich potom rozpoznáva spoločne (interne "
-            "ich kombinuje syntaxou „slk+eng“). Pridanie ďalších "
-            "jazykov ale OCR mierne spomaľuje, takže označujte len "
-            "tie, ktoré v dokumente skutočne sú."
+            "Tesseractu z vykreslených obrázkov stránok. V zozname "
+            "vyberte jazyk OCR, ktorý zodpovedá obsahu dokumentu — "
+            "zoznam má vyše 160 jazykov, takže najrýchlejšie ho "
+            "nájdete tak, že začnete písať jeho kód (napr. „eng“ "
+            "alebo „slk“). Pre dvojjazyčné dokumenty môžete označiť "
+            "viacero jazykov naraz: podržte Ctrl (Windows) alebo "
+            "Cmd (Mac) a klikajte. Tesseract ich potom rozpoznáva "
+            "spoločne (interne ich kombinuje syntaxou „slk+eng“). "
+            "Pridanie ďalších jazykov OCR mierne spomaľuje, takže "
+            "vyberajte len tie, ktoré v dokumente skutočne sú."
         ),
         "manual_ocr_note": (
             "OCR je výrazne pomalšie ako bežná cesta. Pri normálnych "
@@ -151,6 +155,7 @@ WEB_TRANSLATIONS: dict[str, dict[str, str]] = {
         "pdf_file_label": "PDF file",
         "ocr_checkbox": "Apply OCR (for scanned PDFs)",
         "ocr_lang_label": "OCR language:",
+        "ocr_multi_hint": "Tip: type to search (e.g. \"eng\"). For multiple languages hold Ctrl (Windows) or Cmd (Mac) and click; Shift+Click for ranges.",
         "no_stream_checkbox": "Detect only tables with visible borders (recommended)",
         "convert_button": "Convert",
         "converting_text": "Converting…",
@@ -178,13 +183,16 @@ WEB_TRANSLATIONS: dict[str, dict[str, str]] = {
             "copy text from the PDF in a normal viewer, or the "
             "non-OCR conversion comes back empty. With OCR enabled "
             "the text is recognized via Tesseract from rendered page "
-            "images. Tick the OCR language that matches your "
-            "document's content. For bilingual documents you can "
-            "tick more than one language at once — Tesseract will "
-            "recognize them jointly (it combines them internally as "
-            "the \u201cslk+eng\u201d syntax). Adding extra languages "
-            "slows OCR down a little, so only tick the ones actually "
-            "present in the document."
+            "images. Pick the OCR language from the list that matches "
+            "your document — there are 160+ languages, so the "
+            "fastest way to find one is to start typing its code "
+            "(e.g. \u201ceng\u201d or \u201cslk\u201d). For "
+            "bilingual documents you can pick more than one at once: "
+            "hold Ctrl (Windows) or Cmd (Mac) and click. Tesseract "
+            "will recognize them jointly (it combines them "
+            "internally as the \u201cslk+eng\u201d syntax). Adding "
+            "extra languages slows OCR down slightly, so only pick "
+            "the ones actually present in the document."
         ),
         "manual_ocr_note": (
             "OCR is significantly slower than the regular path. For "
