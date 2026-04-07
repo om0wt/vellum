@@ -96,7 +96,8 @@ available, falling back to Flask's dev server otherwise.
 ## Docker (web app)
 
 ```bash
-docker compose -f docker/docker-compose.yml up --build
+docker-compose -f docker/docker-compose.yml up --build
+# (or `docker compose ...` if you have the v2 plugin)
 ```
 
 Then open <http://localhost:5001>.

@@ -12,7 +12,7 @@ For local testing or trusted-LAN deployment:
 ```bash
 git clone https://github.com/om0wt/vellum.git
 cd vellum
-docker compose -f docker/docker-compose.yml up --build -d
+docker-compose -f docker/docker-compose.yml up --build -d
 ```
 
 Open <http://YOUR_HOST:5001>. Done.
@@ -50,7 +50,14 @@ Internet
 
 ### 1. Prerequisites on the server
 
-* Docker engine + `docker compose` v2 plugin
+* Docker engine + Compose. Either form works:
+  - **v1 standalone** (`docker-compose`, hyphenated) — older Debian /
+    Ubuntu installs typically have this. The examples below use this
+    form because it's the lowest common denominator.
+  - **v2 plugin** (`docker compose`, spaced) — modern Docker Desktop
+    and recent server installs. If your system only has the v2 plugin,
+    just substitute `docker compose` for `docker-compose` in the
+    commands below.
 * nginx ≥ 1.18
 * A TLS certificate for your hostname. The example assumes Let's
   Encrypt under `/etc/letsencrypt/live/YOUR_HOST/` — if you use a
@@ -86,14 +93,14 @@ form's `url_for('convert')` won't include the `/vellum/` prefix.
 ### 4. Start the container
 
 ```bash
-docker compose -f docker/docker-compose.yml up --build -d
+docker-compose -f docker/docker-compose.yml up --build -d
 ```
 
 Verify it's running and listening on `127.0.0.1:5001`:
 
 ```bash
-docker compose -f docker/docker-compose.yml ps
-docker compose -f docker/docker-compose.yml logs --tail 20
+docker-compose -f docker/docker-compose.yml ps
+docker-compose -f docker/docker-compose.yml logs --tail 20
 ss -tlnp | grep 5001
 ```
 
@@ -164,7 +171,7 @@ Note the **real client IP**, not `127.0.0.1` — that confirms
 ```bash
 cd /srv/vellum
 git pull
-docker compose -f docker/docker-compose.yml up --build -d
+docker-compose -f docker/docker-compose.yml up --build -d
 ```
 
 The container restarts with the new image. nginx doesn't need touching
@@ -194,16 +201,16 @@ To change one, edit `docker/docker-compose.yml` then re-run
 
 ```bash
 # Status / logs
-docker compose -f docker/docker-compose.yml ps
-docker compose -f docker/docker-compose.yml logs -f          # general app logs
+docker-compose -f docker/docker-compose.yml ps
+docker-compose -f docker/docker-compose.yml logs -f          # general app logs
 tail -f logs/access.log                                       # request log
 
 # Restart / stop
-docker compose -f docker/docker-compose.yml restart
-docker compose -f docker/docker-compose.yml down
+docker-compose -f docker/docker-compose.yml restart
+docker-compose -f docker/docker-compose.yml down
 
 # Rebuild after pulling new code
-git pull && docker compose -f docker/docker-compose.yml up --build -d
+git pull && docker-compose -f docker/docker-compose.yml up --build -d
 
 # nginx
 sudo nginx -t && sudo systemctl reload nginx

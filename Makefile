@@ -9,6 +9,12 @@
 # duplicate it in two places.
 VERSION := $(shell python3 -c "import sys; sys.path.insert(0, 'src'); from _version import __version__; print(__version__)")
 
+# Auto-detect docker-compose vs docker compose. Older systems (Debian
+# 11, Ubuntu 20.04 era) ship the standalone v1 hyphenated binary; newer
+# ones ship the v2 plugin invoked as `docker compose` (space). Prefer
+# the hyphenated binary if it exists, fall back to the plugin.
+DOCKER_COMPOSE := $(shell command -v docker-compose 2>/dev/null || echo "docker compose")
+
 .PHONY: help version git-release run-cli run-gui run-web docker-up docker-down
 
 help:
@@ -71,7 +77,7 @@ run-web:
 	python src/app.py
 
 docker-up:
-	docker compose -f docker/docker-compose.yml up --build
+	$(DOCKER_COMPOSE) -f docker/docker-compose.yml up --build
 
 docker-down:
-	docker compose -f docker/docker-compose.yml down
+	$(DOCKER_COMPOSE) -f docker/docker-compose.yml down
