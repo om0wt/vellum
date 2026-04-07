@@ -20,9 +20,34 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from tkinter.scrolledtext import ScrolledText
 
-from _tesseract_langs import TESSERACT_LANG_NAMES
-from _version import __author__, __codename__, __release_date__, __version__
-from pdf_to_docx import (
+
+# PyInstaller --windowed builds run with no console attached, so
+# sys.stdout and sys.stderr are None. When pdf2docx is imported below
+# it calls logging.basicConfig() at module load, which installs a
+# StreamHandler bound to whatever sys.stderr is at that moment. If the
+# stream is None every subsequent emit() raises
+# `AttributeError: 'NoneType' object has no attribute 'write'` and
+# floods the log with traceback noise. Bind a no-op writer FIRST so
+# basicConfig has a working stream. Our own _TkLogHandler installed
+# later still captures records into the GUI log widget — this null
+# writer is just a sink for the duplicate handler basicConfig installs.
+class _NullWriter:
+    def write(self, _s: str) -> int:
+        return 0
+
+    def flush(self) -> None:
+        pass
+
+
+if sys.stdout is None:
+    sys.stdout = _NullWriter()  # type: ignore[assignment]
+if sys.stderr is None:
+    sys.stderr = _NullWriter()  # type: ignore[assignment]
+
+
+from _tesseract_langs import TESSERACT_LANG_NAMES  # noqa: E402
+from _version import __author__, __codename__, __release_date__, __version__  # noqa: E402
+from pdf_to_docx import (  # noqa: E402
     convert_pdf,
     fix_bullet_fonts,
     fix_first_table_header,
