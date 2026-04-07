@@ -13,8 +13,8 @@ onto a fresh, editable surface.
 from __future__ import annotations
 
 __codename__ = "Vellum"
-__version__ = "1.2.0"
-__release_date__ = "2026-04-07"
+__version__ = "1.2.1"
+__release_date__ = "2026-04-08"
 __author__ = "Pavol Calfa"
 __author_email__ = "pavol.calfa@gmail.com"
 __license__ = "MIT"
