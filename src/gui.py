@@ -20,6 +20,7 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from tkinter.scrolledtext import ScrolledText
 
+from _version import __author__, __codename__, __release_date__, __version__
 from pdf_to_docx import (
     convert_pdf,
     fix_bullet_fonts,
@@ -539,9 +540,18 @@ class ConverterApp(tk.Tk):
         # Status line — single-line at-a-glance state. We don't wrap it
         # because the full path goes to the log widget below; the status
         # only shows short messages like "Converting…" or "Saved: <name>".
+        # The version label is right-aligned on the same row so it
+        # always remains visible regardless of status updates.
+        status_row = ttk.Frame(outer)
+        status_row.pack(fill="x", pady=(12, 4))
         ttk.Label(
-            outer, textvariable=self._status, foreground="#666"
-        ).pack(anchor="w", pady=(12, 4))
+            status_row, textvariable=self._status, foreground="#666"
+        ).pack(side="left")
+        ttk.Label(
+            status_row,
+            text=f"{__codename__} v{__version__} ({__release_date__})",
+            foreground="#999",
+        ).pack(side="right")
 
         # "Show log ▸" / "Hide log ▾" disclosure button — collapses the
         # log widget by default to keep the window compact, lets the
@@ -571,7 +581,10 @@ class ConverterApp(tk.Tk):
 
     def _apply_language(self) -> None:
         """Re-render every translatable widget after a language switch."""
-        self.title(self._t("window_title"))
+        self.title(
+            f"{__codename__} — {self._t('window_title')}  "
+            f"·  v{__version__} ({__release_date__})"
+        )
         self._lang_label.config(text=self._t("language_label"))
         self._heading.config(text=self._t("heading"))
         self._subtitle.config(text=self._t("subtitle"))

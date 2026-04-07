@@ -1,4 +1,13 @@
-# PDF → DOCX Converter
+# Vellum — PDF → DOCX Converter
+
+> *Vellum* (from Latin **_vitulinum_**, "of the calf", via Old French
+> *velin*) was the smooth, durable writing material medieval scribes
+> prepared from calf skin: cleaned, scraped flat, and stretched until
+> it could carry a pen. Whole libraries lived on it, long before paper.
+> This converter borrows the name as a small homage — it takes a PDF
+> (itself a flattened, fixed-position simulation of the printed page)
+> and lifts the text, tables, and structure back onto a fresh surface
+> where they can be edited, rewritten, and bound into something new.
 
 A Python tool that converts PDFs to editable Word documents, built around
 [`pdf2docx`](https://github.com/dothinking/pdf2docx) for text-based PDFs and a
@@ -15,8 +24,10 @@ core:
 ```
 .
 ├── README.md
+├── LICENSE
 ├── requirements.txt
 ├── src/                          # Application code
+│   ├── _version.py               # Single source of truth for version + author
 │   ├── pdf_to_docx.py            # Conversion core (also a CLI)
 │   ├── gui.py                    # Tkinter desktop GUI
 │   ├── app.py                    # Flask web app
@@ -26,10 +37,15 @@ core:
 │   ├── Dockerfile
 │   ├── docker-compose.yml
 │   └── .dockerignore
-└── build-windows/                # Cross-build a Windows .exe via Wine
-    ├── Dockerfile
-    ├── build.sh
-    └── requirements-windows.txt
+├── build-windows/                # Cross-build a Windows .exe via Wine
+│   ├── Dockerfile
+│   ├── build.sh
+│   └── requirements-windows.txt
+└── tests/data/                   # Public synthetic sample PDFs
+    ├── README.md
+    ├── generate_samples.py       # Regenerator (needs Pillow)
+    ├── text_with_tables.pdf      # Exercises lattice table path
+    └── scanned_text.pdf          # Exercises OCR fallback path
 ```
 
 ## Quick start (local)
@@ -189,4 +205,4 @@ Known limitations (out of scope for an in-process minimal converter):
 
 ## License
 
-TBD.
+[MIT](LICENSE) © 2026 Pavol Calfa.

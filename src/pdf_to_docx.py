@@ -38,6 +38,8 @@ import fitz  # PyMuPDF, already a dependency of pdf2docx
 from pdf2docx import Converter
 from docx import Document
 from docx.enum.table import WD_ALIGN_VERTICAL
+
+from _version import __author__, __codename__, __release_date__, __version__
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
@@ -915,7 +917,17 @@ def fix_first_table_header(pdf_path: Path, docx_path: Path) -> bool:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Convert PDF to editable DOCX with formatting preserved.")
+    parser = argparse.ArgumentParser(
+        description="Convert PDF to editable DOCX with formatting preserved.",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=(
+            f"{__codename__} %(prog)s {__version__} ({__release_date__}) "
+            f"— by {__author__}"
+        ),
+    )
     parser.add_argument("pdf", type=Path, help="Input PDF file")
     parser.add_argument("docx", type=Path, nargs="?", help="Output DOCX file (default: same basename as PDF)")
     # Stream-table detection is OFF by default — for school-curriculum-

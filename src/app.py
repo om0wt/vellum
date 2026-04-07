@@ -65,6 +65,7 @@ from flask import Flask, abort, make_response, render_template, request, send_fi
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
 
+from _version import __author__, __codename__, __release_date__, __version__
 from pdf_to_docx import (
     convert_pdf,
     fix_bullet_fonts,
@@ -187,6 +188,9 @@ def _apply_security_headers(response):
     )
     # Strip the version-disclosing Server header.
     response.headers["Server"] = "pdf2docx-web"
+    # Expose our own version (not Werkzeug's). Useful for ops/observability
+    # without revealing the underlying stack.
+    response.headers["X-App-Version"] = __version__
     return response
 
 # Behind a reverse proxy, request.remote_addr is the proxy's IP, not the
@@ -197,6 +201,14 @@ if os.environ.get("TRUST_PROXY", "").lower() in ("1", "true", "yes"):
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
     app.logger.info("ProxyFix enabled (TRUST_PROXY=%s)",
                     os.environ.get("TRUST_PROXY"))
+
+# Log app codename + version + author at startup so docker logs /
+# journald show exactly what's running without anyone needing to grep
+# the source.
+app.logger.info(
+    "%s v%s (%s) — by %s",
+    __codename__, __version__, __release_date__, __author__,
+)
 
 # Detect tesseract once at startup. None = not installed → no OCR
 # controls in the form. A list = available language codes for the
@@ -230,6 +242,10 @@ def index():
     return render_template(
         "index.html",
         tesseract_langs=TESSERACT_LANGS or [],
+        app_codename=__codename__,
+        app_version=__version__,
+        app_release_date=__release_date__,
+        app_author=__author__,
     )
 
 

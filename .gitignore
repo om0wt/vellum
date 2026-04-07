@@ -28,11 +28,16 @@ Thumbs.db
 .idea/
 *.swp
 
-# Local test data — committing PDFs / DOCX blobs would bloat the repo.
-# If you need to share a sample input, put it under tests/data/ and add
-# a targeted exception below.
+# Local test data — committing arbitrary PDFs / DOCX blobs would bloat
+# the repo. tests/data/ holds the small public synthetic samples (see
+# the negation rule below).
 *.pdf
 *.docx
+!tests/data/*.pdf
+!tests/data/*.docx
+
+# User's private testing documents (not for the public repo).
+test-docs/
 
 # Claude Code workspace state
 .claude/

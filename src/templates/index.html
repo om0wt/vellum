@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>PDF to DOCX</title>
+  <title>{{ app_codename }} — PDF to DOCX</title>
   <style>
     :root { color-scheme: light dark; }
     body {
@@ -89,7 +89,11 @@
     <button type="submit" id="btn">Convert</button>
   </form>
 
-  <footer>Max upload size: 50 MB</footer>
+  <footer>
+    Max upload size: 50 MB
+    <br>
+    {{ app_codename }} v{{ app_version }} ({{ app_release_date }}) — by {{ app_author }}
+  </footer>
 
   <script>
     // Disable the button on submit so the user can't double-click
