@@ -93,19 +93,29 @@ jobs:
           du -sh dist/PDF-to-DOCX
 
       - name: Sign Windows .exe (when WINDOWS_CERT_PFX secret is set)
-        # Signs PDF-to-DOCX.exe (the launcher) with a code-signing
-        # certificate provided via GitHub Secrets, so Windows
-        # SmartScreen / Defender stops calling it an "unknown
-        # publisher" binary. Gracefully skips when the secret is not
-        # configured — the build still produces an unsigned .exe in
-        # that case.
+        # Signs PDF-to-DOCX.exe with a code-signing certificate
+        # provided via GitHub Secrets, so Windows SmartScreen /
+        # Defender stops calling it an "unknown publisher" binary.
+        # Gracefully skips when the secret is not configured — the
+        # build still produces an unsigned .exe in that case.
         #
-        # To enable: add two repository secrets:
+        # NOTE on Vellum's actual setup: Vellum uses Certum Open
+        # Source Code Signing, which (post the June 2023 CA/B Forum
+        # rules) requires the private key to live in hardware /
+        # cloud HSM and is therefore NOT available as a downloadable
+        # PFX. The PFX path here is kept as a fallback for forks that
+        # use a different CA, an older cert, or a self-signed cert
+        # for closed-circle distribution. For the Certum-OSS path,
+        # leave this secret unset — the build runs unsigned, and the
+        # release artifact is signed locally on a maintainer's
+        # Windows machine before being uploaded to the GitHub
+        # Release. See README.md "Code signing — Certum Open Source
+        # Code Signing" for the full Certum walkthrough.
+        #
+        # To enable PFX-based signing instead:
         #   WINDOWS_CERT_PFX       — base64 of your .pfx file
         #                            (`base64 -w0 mycert.pfx | pbcopy` on macOS)
         #   WINDOWS_CERT_PASSWORD  — the .pfx export password
-        #
-        # See README.md "Code signing" for cert source recommendations.
         shell: pwsh
         env:
           PFX_BASE64: ${{ secrets.WINDOWS_CERT_PFX }}

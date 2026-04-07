@@ -172,75 +172,176 @@ testing the build without cutting a real release. In that case the zip
 is uploaded as a workflow artifact (downloadable from the run page) but
 no Release is created.
 
-### Code signing (optional but strongly recommended for distribution)
+### Code signing — Certum Open Source Code Signing
 
 Without a code signature, Windows SmartScreen and Defender flag every
 download as an "unknown publisher" binary and prompt the user to
-report it. Signing the `.exe` with a valid code-signing certificate
-fixes this — though the user still has to wait for SmartScreen
-**reputation** to build before warnings stop entirely (typically a
-few thousand downloads/runs over weeks/months, unless you use an EV
-cert which clears warnings instantly).
+report it. Signing the `.exe` fixes this, but the user still has to
+wait for SmartScreen **reputation** to build before warnings clear
+entirely (typically a few thousand downloads/runs over weeks/months,
+unless you use an EV cert which clears warnings instantly).
 
-The GitHub Actions workflow at `.github/workflows/build-windows.yml`
-includes a code-signing step that **gracefully skips when no
-certificate is configured** (so the build still works) and
-**automatically signs every release** when you add the certificate as
-GitHub Secrets.
+Vellum uses **Certum Open Source Code Signing** — free for verified
+open-source projects. The walkthrough below is the path the project
+itself uses; if you're forking and want a different CA, the principles
+(get a cert, sign with `signtool`, store secrets in GitHub) are the
+same.
 
-#### Where to get a certificate
+#### Important: post-2023 hardware-key requirement
 
-| Option | Cost | SmartScreen behavior | Notes |
-|---|---|---|---|
-| **Certum Open Source Code Signing** | Free for verified OSS projects | Reputation-based (warns until trust builds) | Best free option for MIT/Apache/etc. projects on GitHub. Requires identity verification. |
-| **Microsoft Trusted Signing** | ~$10/month | Reputation-based | Modern, simple, no hardware token. Stored in Azure Key Vault. |
-| **Sectigo / DigiCert / SSL.com (standard)** | ~$200–400/year | Reputation-based | Traditional CAs. Standard Code Signing OV cert. |
-| **EV Code Signing (any major CA)** | ~$300–600/year | **Instant trust, no warnings** | Requires a hardware USB token; awkward but the only "no warning ever" path. |
-| **Self-signed certificate** | Free | Still warns + users must trust your CA per machine | Not useful for public distribution. |
+Since June 2023 the CA/Browser Forum requires that the private key
+for any new Standard Code Signing certificate be stored in **hardware**
+(FIPS 140-2 Level 2+) — i.e. a physical USB token or a cloud HSM.
+**A pure-PFX-on-disk workflow is no longer available** for new certs.
+This affects Certum, Sectigo, DigiCert, and every other CA equally.
 
-For an MIT-licensed open source project like Vellum, I'd recommend
-**Certum Open Source Code Signing** (free) or **Microsoft Trusted
-Signing** (cheap, modern) as the practical first step.
+For Certum specifically, the OSS cert is delivered through **Certum
+SimplySign**, their cloud HSM service. You sign by authenticating
+to SimplySign over the internet — your private key never leaves
+their hardware. The signing tool uses a virtual smart card driver
+that signtool.exe can talk to.
 
-#### Configuring the secrets
+**Practical consequence**: the GitHub Actions runner cannot directly
+hold the Certum private key. You have two options:
 
-Once you have a `.pfx` (PKCS#12) file containing your certificate and
-private key, encode it and add it to GitHub:
+1. **Sign locally, upload manually** — let the workflow build the
+   unsigned `.exe`, download it from the workflow artifact page,
+   sign it on your own machine using SimplySign + signtool, then
+   upload the signed `.zip` to the GitHub Release manually. Slower
+   but doesn't require any special infrastructure.
+2. **Self-hosted runner** with the SimplySign virtual smart card
+   pre-installed and authenticated. The workflow's `Sign Windows
+   .exe` step then runs against the cloud HSM transparently. Faster
+   for frequent releases, but requires a Windows machine you keep
+   running and maintaining.
+
+For Vellum's release cadence (occasional, not daily), **option 1** is
+the right call. Instructions below.
+
+#### Step 1: Apply for the Certum OSS certificate
+
+1. Go to <https://shop.certum.eu/> and search for **"Open Source Code
+   Signing"** (the exact product page URL changes occasionally).
+2. Start the order. The OSS cert is free, but you still go through
+   the checkout flow.
+3. Fill out the application form. You'll need:
+   - Your full legal name and address
+   - A government-issued ID (passport or national ID card) — they
+     verify identity manually
+   - The project's GitHub URL (`https://github.com/om0wt/vellum`)
+   - The MIT LICENSE file in the repo (Certum verifies the project
+     is actually open source)
+4. Submit identity verification documents through their secure
+   portal. Some applicants are also asked to do a short video call.
+5. **Wait 1–2 weeks** for review. They'll email you when the cert is
+   ready.
+
+#### Step 2: Activate SimplySign + install signtool
+
+Once Certum approves the cert, they email you SimplySign credentials.
+
+1. Install **SimplySign Desktop** from
+   <https://support.certum.eu/en/cert-offer-simplysigndesktop/>. It
+   provides the virtual smart card driver and the SimplySign login
+   client.
+2. Install the **Windows SDK** (for `signtool.exe`) — easiest via
+   Visual Studio Build Tools, or directly from
+   <https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/>.
+3. Log into SimplySign Desktop with the credentials Certum sent.
+   Your cert appears as a virtual smart card available to Windows
+   crypto APIs (and therefore to signtool).
+
+#### Step 3: Sign Vellum locally before releasing
+
+Cut the release as normal:
 
 ```bash
-# Encode the PFX as base64 (no line wrapping)
-base64 -w0 mycert.pfx > mycert.pfx.b64       # Linux
-base64 -i mycert.pfx -o mycert.pfx.b64       # macOS
-
-# Copy the base64 string to your clipboard
-cat mycert.pfx.b64 | pbcopy                  # macOS
-cat mycert.pfx.b64 | xclip -selection c      # Linux
+make git-release
 ```
 
-Then in your repo on GitHub:
+This pushes the tag, the GitHub Actions workflow runs, and produces
+an **unsigned** `Vellum-PDF-to-DOCX-vX.Y.Z-windows.zip` as a workflow
+artifact (because `WINDOWS_CERT_PFX` isn't set in this setup).
 
-1. Navigate to **Settings → Secrets and variables → Actions → New repository secret**
-2. Add `WINDOWS_CERT_PFX` — paste the base64 string
-3. Add `WINDOWS_CERT_PASSWORD` — your `.pfx` export password
-
-The next workflow run (manual dispatch or `make git-release` tag
-push) will automatically sign `PDF-to-DOCX.exe` before zipping it.
-You'll see `::notice::PDF-to-DOCX.exe signed and verified.` in the
-workflow log.
-
-#### Verifying the signature locally
-
-After downloading the release zip on a Windows machine:
+On your Windows machine:
 
 ```powershell
-# Extract, then check the signature
+# Download the unsigned zip from the workflow run page
+# Extract it
+Expand-Archive Vellum-PDF-to-DOCX-v1.1.0-windows.zip -DestinationPath .
+
+# Make sure SimplySign Desktop is logged in (system tray icon should
+# show "Connected"). Then sign the .exe — signtool will pick up the
+# Certum cert from the virtual smart card automatically.
+signtool sign `
+  /sha1 <YOUR_CERT_THUMBPRINT> `
+  /tr http://timestamp.sectigo.com `
+  /td sha256 `
+  /fd sha256 `
+  /d "Vellum — PDF to DOCX Converter" `
+  /du "https://github.com/om0wt/vellum" `
+  PDF-to-DOCX\PDF-to-DOCX.exe
+
+# Verify
+signtool verify /pa /v PDF-to-DOCX\PDF-to-DOCX.exe
+
+# Re-zip the now-signed folder
+Compress-Archive -Path PDF-to-DOCX -DestinationPath Vellum-PDF-to-DOCX-v1.1.0-windows.zip -Force
+```
+
+You can find your cert thumbprint with:
+
+```powershell
+Get-ChildItem Cert:\CurrentUser\My | Where-Object { $_.Subject -match "Pavol Calfa" }
+```
+
+Copy the `Thumbprint` field (40 hex characters, no spaces).
+
+#### Step 4: Upload the signed zip to the GitHub Release
+
+The GitHub Actions workflow already created a draft Release at
+`github.com/om0wt/vellum/releases/tag/v1.1.0`. Edit that release:
+
+1. **Delete the unsigned zip** that the workflow attached.
+2. **Upload the new signed zip** from your Windows machine.
+3. Save.
+
+Anyone downloading the release now gets the signed binary.
+
+#### Step 5: Verify the signature on a fresh Windows install
+
+```powershell
+# After downloading and extracting on a Windows machine you didn't
+# sign on:
 Get-AuthenticodeSignature .\PDF-to-DOCX\PDF-to-DOCX.exe
 ```
 
-Expected: `Status: Valid` and a `SignerCertificate` line showing your
-publisher name. If the cert is from a CA in Windows's Trusted Root
-store and the timestamp is present, the signature stays valid even
-after the cert itself expires.
+Expected output:
+```
+SignerCertificate:  [...your name...] (Certum Code Signing CA SHA2)
+Status:             Valid
+StatusMessage:      Signature verified.
+```
+
+If you see `Valid`, the cert chain validates against Windows's trust
+store, the timestamp is present (so the signature stays valid past
+cert expiry), and SmartScreen will start building reputation against
+your publisher name. The very first downloads will still warn, but
+"Show more → Run anyway" is now there as an option, and the warning
+disappears entirely once Microsoft's reputation system trusts you
+(typically a few hundred to a few thousand downloads over weeks).
+
+#### Future: automating with a self-hosted runner (option 2)
+
+If release cadence picks up and the manual local-sign step gets
+annoying, you can wire SimplySign into a self-hosted Windows runner.
+The workflow's existing `Sign Windows .exe` step (in
+`.github/workflows/build-windows.yml`) is already structured to use
+`signtool` — replace the `/f $pfxPath /p $env:PFX_PASSWORD` arguments
+with `/sha1 <THUMBPRINT>` and the rest works as-is, *if* the runner
+has SimplySign Desktop installed and authenticated. That's left as a
+future exercise; the local-sign-and-upload flow above is enough for
+the project's current release cadence.
 
 ### Local: Wine + Docker (offline, slower)
 
