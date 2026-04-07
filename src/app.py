@@ -96,6 +96,50 @@ WEB_TRANSLATIONS: dict[str, dict[str, str]] = {
         "err_unknown_lang": "Neznámy jazyk OCR.",
         "err_rate_limit": "Príliš veľa požiadaviek — počkajte chvíľu a skúste znova.",
         "err_conversion": "Konverzia zlyhala — pozrite si serverové logy.",
+        # ----- Right-column user manual -----
+        "manual_heading": "Ako to funguje",
+        "manual_intro": (
+            "Vellum konvertuje PDF súbory do upraviteľných Word (.docx) "
+            "dokumentov a snaží sa zachovať tabuľky, nadpisy a štruktúru "
+            "odrážok. Stačí vybrať súbor, prípadne upraviť možnosti "
+            "konverzie a kliknúť na Konvertovať — výsledný .docx sa "
+            "automaticky stiahne."
+        ),
+        "manual_ocr_heading": "Kedy zapnúť OCR",
+        "manual_ocr_body": (
+            "Zapnite „Použiť OCR“, ak je vaše PDF skenované — teda "
+            "každá stránka je obrázok dokumentu, nie skutočný text. "
+            "Príznaky: text sa nedá označiť a kopírovať v bežnom "
+            "prehliadači, prípadne sa po konverzii bez OCR výstup "
+            "javí prázdny. Pri zapnutom OCR sa text rozpozná pomocou "
+            "Tesseractu z vykreslených obrázkov stránok. Vyberte "
+            "jazyk OCR, ktorý zodpovedá obsahu dokumentu — pre "
+            "dvojjazyčné dokumenty môžete kombinovať jazyky pomocou "
+            "syntaxe „slk+eng“."
+        ),
+        "manual_ocr_note": (
+            "OCR je výrazne pomalšie ako bežná cesta. Pri normálnych "
+            "textových PDF (napr. exportovaných z Wordu alebo "
+            "prehliadača) nechajte OCR vypnuté."
+        ),
+        "manual_tables_heading": "Detekcia tabuliek",
+        "manual_tables_body": (
+            "Predvolene konvertor detekuje len tabuľky s viditeľným "
+            "ohraničením. To dáva najčistejší výstup pre väčšinu "
+            "dokumentov — školské osnovy, technické správy, formuláre. "
+            "V niektorých prípadoch ale dostanete lepší výsledok, keď "
+            "túto možnosť vypnete: konvertor sa potom pokúsi "
+            "rozpoznať tabuľky aj zo zarovnania textu. Cenou za to je "
+            "občasné vynájdenie „falošných“ tabuliek z odsekov typu "
+            "„popis: hodnota“. Skúste obe nastavenia a vyberte to, "
+            "ktoré sa najviac podobá originálu."
+        ),
+        "manual_size_heading": "Limit veľkosti súboru",
+        "manual_size_body": (
+            "Maximálna veľkosť nahraného súboru je 50 MB. Pri bežných "
+            "textových PDF to znamená stovky strán; pri PDF s mnohými "
+            "obrázkami alebo skenoch oveľa menej."
+        ),
     },
     "en": {
         "page_title": "PDF to DOCX Converter",
@@ -114,6 +158,50 @@ WEB_TRANSLATIONS: dict[str, dict[str, str]] = {
         "err_unknown_lang": "Unknown OCR language.",
         "err_rate_limit": "Too many requests — slow down and try again in a minute.",
         "err_conversion": "Conversion failed — see server logs for details.",
+        # ----- Right-column user manual -----
+        "manual_heading": "How it works",
+        "manual_intro": (
+            "Vellum converts PDF files into editable Word (.docx) "
+            "documents while doing its best to preserve tables, "
+            "headings, and bullet structure. Pick a file, adjust the "
+            "conversion options if needed, and click Convert — the "
+            "resulting .docx downloads automatically."
+        ),
+        "manual_ocr_heading": "When to enable OCR",
+        "manual_ocr_body": (
+            "Turn on \u201cApply OCR\u201d if your PDF is a scan — "
+            "i.e. each page is an image of a document rather than "
+            "real selectable text. Symptoms: you can't highlight or "
+            "copy text from the PDF in a normal viewer, or the "
+            "non-OCR conversion comes back empty. With OCR enabled "
+            "the text is recognized via Tesseract from rendered page "
+            "images. Pick the OCR language that matches your "
+            "document's content — for bilingual documents you can "
+            "combine languages with the \u201cslk+eng\u201d syntax."
+        ),
+        "manual_ocr_note": (
+            "OCR is significantly slower than the regular path. For "
+            "normal text-based PDFs (exported from Word, LibreOffice, "
+            "a browser, etc.) leave OCR OFF."
+        ),
+        "manual_tables_heading": "Table detection",
+        "manual_tables_body": (
+            "By default the converter only detects tables that have "
+            "visible borders. This gives the cleanest output for "
+            "most documents — school curricula, technical reports, "
+            "forms. In some cases you'll get a better result by "
+            "turning this option OFF: the converter will then try to "
+            "recognize tables from text alignment too. The trade-off "
+            "is that it can occasionally invent false tables out of "
+            "label/value paragraphs. Try both settings and pick "
+            "whichever looks closer to the source."
+        ),
+        "manual_size_heading": "Upload size limit",
+        "manual_size_body": (
+            "The maximum upload size is 50 MB. For typical text PDFs "
+            "that's hundreds of pages; for image-heavy or scanned "
+            "PDFs it's much fewer."
+        ),
     },
 }
 DEFAULT_LANG = "sk"

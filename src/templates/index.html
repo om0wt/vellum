@@ -8,11 +8,40 @@
     :root { color-scheme: light dark; }
     body {
       font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-      max-width: 480px;
+      max-width: 880px;
       margin: 4rem auto;
       padding: 0 1rem;
       color: #222;
     }
+    /* Two-column layout: form on the left, user manual on the right.
+       Collapses to a single column on narrow viewports. */
+    .layout {
+      display: flex;
+      gap: 2rem;
+      align-items: flex-start;
+    }
+    .layout > .col-form { flex: 1 1 360px; min-width: 0; }
+    .layout > .col-manual { flex: 1 1 360px; min-width: 0; }
+    @media (max-width: 720px) {
+      .layout { flex-direction: column; }
+    }
+    .manual {
+      font-size: 0.9rem;
+      color: #444;
+      line-height: 1.55;
+    }
+    .manual h2 {
+      font-size: 1.1rem;
+      margin: 0 0 0.5rem;
+      color: #222;
+    }
+    .manual h3 {
+      font-size: 0.95rem;
+      margin: 1.1rem 0 0.35rem;
+      color: #555;
+    }
+    .manual p { margin: 0 0 0.7rem; }
+    .manual em { color: #6a958c; font-style: normal; font-weight: 500; }
     .lang-switcher {
       text-align: right;
       font-size: 0.85rem;
@@ -94,6 +123,8 @@
   <h1>{{ t.heading }}</h1>
   <p class="lead">{{ t.lead }}</p>
 
+  <div class="layout">
+  <div class="col-form">
   <form action="{{ url_for('convert') }}" method="post" enctype="multipart/form-data" id="form">
     <label class="field">
       {{ t.pdf_file_label }}
@@ -123,6 +154,23 @@
     <button type="submit" id="btn">{{ t.convert_button }}</button>
     <div id="error" class="error" style="display:none"></div>
   </form>
+  </div><!-- /.col-form -->
+
+  <aside class="col-manual manual">
+    <h2>{{ t.manual_heading }}</h2>
+    <p>{{ t.manual_intro }}</p>
+
+    <h3>{{ t.manual_ocr_heading }}</h3>
+    <p>{{ t.manual_ocr_body }}</p>
+    <p><em>{{ t.manual_ocr_note }}</em></p>
+
+    <h3>{{ t.manual_tables_heading }}</h3>
+    <p>{{ t.manual_tables_body }}</p>
+
+    <h3>{{ t.manual_size_heading }}</h3>
+    <p>{{ t.manual_size_body }}</p>
+  </aside>
+  </div><!-- /.layout -->
 
   <footer>
     {{ t.max_upload }}
