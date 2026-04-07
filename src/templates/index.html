@@ -89,6 +89,26 @@
       color: #555;
       margin-bottom: 1.25rem;
     }
+    /* Inline OCR-language picker — multi-select via checkboxes so the
+       user can pick e.g. slk + eng for bilingual documents. */
+    .ocr-langs {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.4rem 1rem;
+      font-size: 0.9rem;
+      color: #555;
+      margin-bottom: 1.25rem;
+    }
+    .ocr-langs-label { color: #555; margin-right: 0.25rem; }
+    .ocr-langs label.ocr-lang {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-weight: normal;
+      cursor: pointer;
+    }
+    .ocr-langs input[disabled] + * { color: #aaa; }
     button {
       width: 100%;
       padding: 0.75rem;
@@ -136,14 +156,16 @@
       <input type="checkbox" name="ocr" id="ocr">
       {{ t.ocr_checkbox }}
     </label>
-    <label class="checkbox" id="ocr-lang-row" style="margin-left: 1.5rem;">
-      {{ t.ocr_lang_label }}
-      <select name="ocr_language" id="ocr-lang-select" disabled>
-        {% for code, display in ocr_options %}
-          <option value="{{ code }}"{% if code == ocr_default %} selected{% endif %}>{{ display }}</option>
-        {% endfor %}
-      </select>
-    </label>
+    <div class="ocr-langs" id="ocr-lang-row" style="margin-left: 1.5rem;">
+      <span class="ocr-langs-label">{{ t.ocr_lang_label }}</span>
+      {% for code, display in ocr_options %}
+        <label class="ocr-lang">
+          <input type="checkbox" name="ocr_language" value="{{ code }}" class="ocr-lang-cb"
+                 {% if code == ocr_default %}checked{% endif %} disabled>
+          {{ display }}
+        </label>
+      {% endfor %}
+    </div>
     {% endif %}
 
     <label class="checkbox">
@@ -186,12 +208,15 @@
       convert:    {{ t.convert_button|tojson }},
     };
 
-    // OCR language picker — enable/disable to mirror the OCR checkbox.
+    // OCR language picker — enable/disable the whole checkbox group to
+    // mirror the parent OCR checkbox.
     const ocrCheckbox = document.getElementById('ocr');
-    const ocrSelect = document.getElementById('ocr-lang-select');
-    if (ocrCheckbox && ocrSelect) {
+    const ocrLangCheckboxes = document.querySelectorAll('.ocr-lang-cb');
+    if (ocrCheckbox && ocrLangCheckboxes.length) {
       ocrCheckbox.addEventListener('change', function () {
-        ocrSelect.disabled = !ocrCheckbox.checked;
+        ocrLangCheckboxes.forEach(function (cb) {
+          cb.disabled = !ocrCheckbox.checked;
+        });
       });
     }
 

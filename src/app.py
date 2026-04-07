@@ -112,10 +112,13 @@ WEB_TRANSLATIONS: dict[str, dict[str, str]] = {
             "Príznaky: text sa nedá označiť a kopírovať v bežnom "
             "prehliadači, prípadne sa po konverzii bez OCR výstup "
             "javí prázdny. Pri zapnutom OCR sa text rozpozná pomocou "
-            "Tesseractu z vykreslených obrázkov stránok. Vyberte "
-            "jazyk OCR, ktorý zodpovedá obsahu dokumentu — pre "
-            "dvojjazyčné dokumenty môžete kombinovať jazyky pomocou "
-            "syntaxe „slk+eng“."
+            "Tesseractu z vykreslených obrázkov stránok. Označte "
+            "jazyk OCR, ktorý zodpovedá obsahu dokumentu. Pre "
+            "dvojjazyčné dokumenty môžete označiť aj viacero jazykov "
+            "naraz — Tesseract ich potom rozpoznáva spoločne (interne "
+            "ich kombinuje syntaxou „slk+eng“). Pridanie ďalších "
+            "jazykov ale OCR mierne spomaľuje, takže označujte len "
+            "tie, ktoré v dokumente skutočne sú."
         ),
         "manual_ocr_note": (
             "OCR je výrazne pomalšie ako bežná cesta. Pri normálnych "
@@ -175,9 +178,13 @@ WEB_TRANSLATIONS: dict[str, dict[str, str]] = {
             "copy text from the PDF in a normal viewer, or the "
             "non-OCR conversion comes back empty. With OCR enabled "
             "the text is recognized via Tesseract from rendered page "
-            "images. Pick the OCR language that matches your "
-            "document's content — for bilingual documents you can "
-            "combine languages with the \u201cslk+eng\u201d syntax."
+            "images. Tick the OCR language that matches your "
+            "document's content. For bilingual documents you can "
+            "tick more than one language at once — Tesseract will "
+            "recognize them jointly (it combines them internally as "
+            "the \u201cslk+eng\u201d syntax). Adding extra languages "
+            "slows OCR down a little, so only tick the ones actually "
+            "present in the document."
         ),
         "manual_ocr_note": (
             "OCR is significantly slower than the regular path. For "
@@ -532,7 +539,13 @@ def convert():
 
     no_stream = request.form.get("no_stream_tables") == "on"
     ocr_enabled = request.form.get("ocr") == "on"
-    ocr_lang_raw = request.form.get("ocr_language", "eng")
+    # The OCR language picker is now a multi-select checkbox group, so
+    # the form sends one repeated `ocr_language` field per ticked
+    # language. Join them with "+" — the same syntax tesseract accepts
+    # for multi-language passes (e.g. "slk+eng"). _validate_ocr_language
+    # below splits and validates each component.
+    ocr_lang_list = request.form.getlist("ocr_language")
+    ocr_lang_raw = "+".join(ocr_lang_list) if ocr_lang_list else "eng"
 
     # Defensive: if the client somehow submits ocr=on but the server
     # has no tesseract installed, fall back to the regular path with a
