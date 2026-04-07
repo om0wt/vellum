@@ -13,7 +13,21 @@ services:
       dockerfile: docker/Dockerfile
     container_name: pdf2docx-web
     ports:
-      - "5001:5001"
+      # Bind to 127.0.0.1 ONLY so the container is reachable just from
+      # the host's reverse proxy (nginx, Caddy, etc.). Without the
+      # explicit 127.0.0.1, Docker would publish on 0.0.0.0 — exposing
+      # the app on every interface, bypassing nginx entirely. That's
+      # both a security regression (no rate limit at the proxy layer,
+      # no TLS) and the cause of "ip=172.21.0.1" lines in the access
+      # log: a request that lands on the container without going
+      # through nginx has no X-Forwarded-For header, so ProxyFix falls
+      # back to remote_addr which is the docker bridge gateway.
+      #
+      # If you DO want to expose the container directly (no proxy in
+      # front), change this to "5001:5001" and disable TRUST_PROXY
+      # below — otherwise X-Forwarded-For spoofing becomes a rate-
+      # limit-bypass.
+      - "127.0.0.1:5001:5001"
     restart: unless-stopped
     volumes:
       # Persist the access log to ./logs/ at the PROJECT ROOT (not in
