@@ -1,0 +1,31 @@
+# Run from the project root with:
+#   docker compose -f docker/docker-compose.yml up --build
+# Or from this directory:
+#   cd docker && docker compose up --build
+#
+# The build context is the project root (..) so the Dockerfile can
+# COPY src/* and requirements.txt directly.
+
+services:
+  pdf2docx:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: pdf2docx-web
+    ports:
+      - "5001:5001"
+    restart: unless-stopped
+    volumes:
+      # Persist the access log to ./logs/ at the PROJECT ROOT (not in
+      # docker/). The relative path is resolved from this compose file's
+      # location, so ../logs points back to the project root.
+      - ../logs:/app/logs
+    environment:
+      # The container listens on 5001 to match the host port mapping
+      # above. The non-Docker `python app.py` invocation still uses the
+      # app's own default (4567); only the container is overridden.
+      PORT: "5001"
+      # Uncomment if you put a reverse proxy (nginx/Caddy/Cloudflare
+      # tunnel) in front of the container — without this, the access
+      # log records the proxy's IP instead of the real client's.
+      # TRUST_PROXY: "1"

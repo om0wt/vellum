@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.git/
+.gitignore
+.DS_Store
+
+# Don't bake local sample files into the image
+*.pdf
+*.docx

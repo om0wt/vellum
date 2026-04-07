@@ -1,0 +1,7 @@
+Flask>=3.0,<4
+pdf2docx==0.5.12
+PyMuPDF==1.27.2.2
+python-docx==1.2.0
+# Production-grade WSGI server. Pure Python, no native deps. Used by
+# app.py when available; falls back to the Flask dev server otherwise.
+waitress>=3.0

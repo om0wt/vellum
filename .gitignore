@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+*.egg
+
+# Virtualenv
+venv/
+.venv/
+env/
+
+# Build artifacts
+build/
+dist/
+*.spec
+
+# Runtime
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Local test data — committing PDFs / DOCX blobs would bloat the repo.
+# If you need to share a sample input, put it under tests/data/ and add
+# a targeted exception below.
+*.pdf
+*.docx
+
+# Claude Code workspace state
+.claude/
+.claude-plans/

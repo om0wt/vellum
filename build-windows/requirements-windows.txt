@@ -1,0 +1,10 @@
+pdf2docx==0.5.12
+PyMuPDF==1.27.2.2
+python-docx==1.2.0
+
+# Pin numpy < 2.0 because numpy 2.x calls ucrtbase.dll.crealf at import
+# time, and Wine 9.17 (the version in tobix/pywine:3.12) does not yet
+# implement crealf — PyInstaller's analysis crashes inside Wine when
+# importing numpy 2.x. numpy 1.26 is the last 1.x release with Python
+# 3.12 wheels and is still compatible with pdf2docx and opencv.
+numpy<2.0
