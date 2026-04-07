@@ -60,7 +60,7 @@
   <h1>PDF to DOCX converter</h1>
   <p class="lead">Upload a PDF and download an editable Word document.</p>
 
-  <form action="/convert" method="post" enctype="multipart/form-data" id="form">
+  <form action="{{ url_for('convert') }}" method="post" enctype="multipart/form-data" id="form">
     <label class="field">
       PDF file
       <input type="file" name="pdf" accept="application/pdf" required>

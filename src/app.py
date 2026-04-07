@@ -194,11 +194,19 @@ def _apply_security_headers(response):
     return response
 
 # Behind a reverse proxy, request.remote_addr is the proxy's IP, not the
-# real client. ProxyFix parses X-Forwarded-For (and friends) so the
-# correct IP propagates. Only enable when actually behind a trusted proxy
-# — otherwise an attacker could spoof the X-Forwarded-For header.
+# real client. ProxyFix parses X-Forwarded-For / -Proto / -Host /
+# -Prefix (one trusted hop each) so the correct values propagate. Only
+# enable when actually behind a trusted proxy — otherwise an attacker
+# could spoof these headers.
+#
+# x_prefix=1 makes Flask honor the X-Forwarded-Prefix header that nginx
+# (or another reverse proxy) sends when the app is mounted at a sub-path
+# like /vellum. With it, url_for() generates correctly-prefixed URLs so
+# the form posts back to /vellum/convert instead of /convert.
 if os.environ.get("TRUST_PROXY", "").lower() in ("1", "true", "yes"):
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+    app.wsgi_app = ProxyFix(
+        app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1,
+    )
     app.logger.info("ProxyFix enabled (TRUST_PROXY=%s)",
                     os.environ.get("TRUST_PROXY"))
 
