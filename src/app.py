@@ -65,6 +65,7 @@ from flask import Flask, abort, make_response, render_template, request, send_fi
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
 
+from _tesseract_langs import TESSERACT_LANG_NAMES
 from _version import __author__, __codename__, __release_date__, __version__
 from pdf_to_docx import (
     convert_pdf,
@@ -73,6 +74,50 @@ from pdf_to_docx import (
     list_tesseract_languages,
     ocr_to_docx,
 )
+
+
+# ----- UI translations (Slovak default + English) ----------------------
+
+WEB_TRANSLATIONS: dict[str, dict[str, str]] = {
+    "sk": {
+        "page_title": "Konvertor PDF na DOCX",
+        "heading": "Konvertor PDF na DOCX",
+        "lead": "Nahrajte PDF a stiahnite si upraviteľný Word dokument.",
+        "pdf_file_label": "PDF súbor",
+        "ocr_checkbox": "Použiť OCR (pre skenované PDF)",
+        "ocr_lang_label": "Jazyk OCR:",
+        "no_stream_checkbox": "Detekovať len ohraničené tabuľky (odporúčané)",
+        "convert_button": "Konvertovať",
+        "converting_text": "Konvertujem…",
+        "max_upload": "Maximálna veľkosť: 50 MB",
+        "by": "od",
+        "err_no_file": "Nebol nahraný žiadny súbor.",
+        "err_not_pdf": "Nahraný súbor nie je PDF.",
+        "err_unknown_lang": "Neznámy jazyk OCR.",
+        "err_rate_limit": "Príliš veľa požiadaviek — počkajte chvíľu a skúste znova.",
+        "err_conversion": "Konverzia zlyhala — pozrite si serverové logy.",
+    },
+    "en": {
+        "page_title": "PDF to DOCX Converter",
+        "heading": "PDF to DOCX Converter",
+        "lead": "Upload a PDF and download an editable Word document.",
+        "pdf_file_label": "PDF file",
+        "ocr_checkbox": "Apply OCR (for scanned PDFs)",
+        "ocr_lang_label": "OCR language:",
+        "no_stream_checkbox": "Detect only tables with visible borders (recommended)",
+        "convert_button": "Convert",
+        "converting_text": "Converting…",
+        "max_upload": "Max upload size: 50 MB",
+        "by": "by",
+        "err_no_file": "No file uploaded.",
+        "err_not_pdf": "Uploaded file is not a PDF.",
+        "err_unknown_lang": "Unknown OCR language.",
+        "err_rate_limit": "Too many requests — slow down and try again in a minute.",
+        "err_conversion": "Conversion failed — see server logs for details.",
+    },
+}
+DEFAULT_LANG = "sk"
+SUPPORTED_LANGS = tuple(WEB_TRANSLATIONS.keys())
 
 # General app logging → stderr (captured by docker logs).
 logging.basicConfig(
@@ -238,6 +283,38 @@ def _client_ip() -> str:
     return request.remote_addr or "unknown"
 
 
+def _pick_language() -> str:
+    """Determine the active UI language for the current request.
+
+    Resolution order:
+      1. ``?lang=XX`` query parameter (explicit user choice — used by
+         the SK/EN switcher links)
+      2. ``lang=XX`` cookie (sticky preference set last time)
+      3. ``DEFAULT_LANG`` (Slovak)
+
+    Unknown values are silently coerced to the default to prevent the
+    cookie from being weaponized into a stored XSS reflector.
+    """
+    chosen = (
+        request.args.get("lang")
+        or request.cookies.get("lang")
+        or DEFAULT_LANG
+    )
+    if chosen not in SUPPORTED_LANGS:
+        chosen = DEFAULT_LANG
+    return chosen
+
+
+def _ocr_language_options(lang_codes: list[str] | None) -> list[tuple[str, str]]:
+    """Return ``[(code, display_name), …]`` for the OCR language picker,
+    sorted by display name. Unknown codes fall back to the code itself."""
+    if not lang_codes:
+        return []
+    pairs = [(code, TESSERACT_LANG_NAMES.get(code, code)) for code in lang_codes]
+    pairs.sort(key=lambda p: p[1].lower())
+    return pairs
+
+
 def _looks_like_pdf(file_storage) -> bool:
     """Sniff the first bytes of the upload — real PDFs start with '%PDF-'."""
     head = file_storage.stream.read(5)
@@ -247,14 +324,31 @@ def _looks_like_pdf(file_storage) -> bool:
 
 @app.get("/")
 def index():
-    return render_template(
+    lang = _pick_language()
+    response = make_response(render_template(
         "index.html",
-        tesseract_langs=TESSERACT_LANGS or [],
+        t=WEB_TRANSLATIONS[lang],
+        lang=lang,
+        ocr_options=_ocr_language_options(TESSERACT_LANGS),
+        ocr_default="eng" if (TESSERACT_LANGS and "eng" in TESSERACT_LANGS) else (
+            (TESSERACT_LANGS or [None])[0]
+        ),
         app_codename=__codename__,
         app_version=__version__,
         app_release_date=__release_date__,
         app_author=__author__,
-    )
+    ))
+    # Persist the language pick as a cookie if it came from the query
+    # string. 1-year max-age, lax samesite, secure when behind TLS.
+    if request.args.get("lang") in SUPPORTED_LANGS:
+        response.set_cookie(
+            "lang", lang,
+            max_age=365 * 24 * 3600,
+            samesite="Lax",
+            secure=request.is_secure,
+            httponly=False,  # JS doesn't read it, but no harm letting it
+        )
+    return response
 
 
 def _validate_ocr_language(raw: str) -> str | None:
@@ -284,22 +378,23 @@ def _validate_ocr_language(raw: str) -> str | None:
 def convert():
     client = _client_ip()
     user_agent = (request.headers.get("User-Agent") or "?")[:80]
+    t = WEB_TRANSLATIONS[_pick_language()]
 
     # Per-IP rate limit. Reject before doing any expensive work.
     if not _RATE_LIMIT.check(client):
         access_log.info("ip=%s REJECT reason=rate-limit ua=%r", client, user_agent)
-        abort(429, "Too many requests — slow down and try again in a minute.")
+        abort(429, t["err_rate_limit"])
 
     upload = request.files.get("pdf")
     if upload is None or upload.filename == "":
         access_log.info("ip=%s REJECT reason=no-file ua=%r", client, user_agent)
-        abort(400, "No file uploaded.")
+        abort(400, t["err_no_file"])
     if not _looks_like_pdf(upload):
         access_log.info(
             "ip=%s REJECT reason=not-pdf file=%r ua=%r",
             client, upload.filename, user_agent,
         )
-        abort(400, "Uploaded file is not a PDF.")
+        abort(400, t["err_not_pdf"])
 
     no_stream = request.form.get("no_stream_tables") == "on"
     ocr_enabled = request.form.get("ocr") == "on"
@@ -325,7 +420,7 @@ def convert():
                 "ip=%s REJECT reason=bad-lang ocr_lang=%r",
                 client, ocr_lang_raw,
             )
-            abort(400, f"Unknown OCR language: {ocr_lang_raw!r}")
+            abort(400, t["err_unknown_lang"])
 
     safe_name = secure_filename(upload.filename) or "input.pdf"
     # Cap filename length to prevent OS path-limit / log-flood abuse.
@@ -367,7 +462,7 @@ def convert():
                 "ip=%s FAIL file=%r in=%dB error=%s",
                 client, safe_name, in_size, type(exc).__name__,
             )
-            abort(500, "Conversion failed — see server logs for details.")
+            abort(500, t["err_conversion"])
 
         # Read the file into memory before the temp dir is cleaned up so
         # send_file can stream it after the `with` block exits.

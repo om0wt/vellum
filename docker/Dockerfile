@@ -28,15 +28,16 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Application source. Copied from src/ at the project root into /app
 # (the WORKDIR), so the in-container layout looks like:
 #   /app/_version.py
+#   /app/_tesseract_langs.py
 #   /app/pdf_to_docx.py
 #   /app/app.py
 #   /app/templates/index.html
 #
-# _version.py MUST be present — pdf_to_docx.py and app.py both
-# `from _version import ...`. Local runs find it on sys.path
-# automatically because Python adds the script's directory; the
-# container has only the files we COPY here.
-COPY src/_version.py src/pdf_to_docx.py src/app.py ./
+# Every src/*.py module that app.py or pdf_to_docx.py imports MUST be
+# listed here. Local runs find them on sys.path automatically because
+# Python adds the script's directory; the container has only the files
+# we COPY here.
+COPY src/_version.py src/_tesseract_langs.py src/pdf_to_docx.py src/app.py ./
 COPY src/templates/ ./templates/
 
 # Pre-create the access log directory so the app can mount the same path

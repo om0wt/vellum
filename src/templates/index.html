@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{ lang }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ app_codename }} — PDF to DOCX</title>
+  <title>{{ app_codename }} — {{ t.page_title }}</title>
   <style>
     :root { color-scheme: light dark; }
     body {
@@ -12,6 +12,26 @@
       margin: 4rem auto;
       padding: 0 1rem;
       color: #222;
+    }
+    .lang-switcher {
+      text-align: right;
+      font-size: 0.85rem;
+      margin-bottom: 0.5rem;
+    }
+    .lang-switcher a {
+      color: #888;
+      text-decoration: none;
+      margin-left: 0.5rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 3px;
+    }
+    .lang-switcher a.active {
+      color: #fff;
+      background: #7BA79D;
+      font-weight: 500;
+    }
+    .lang-switcher a:hover {
+      color: #444;
     }
     h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
     p.lead { color: #666; margin-top: 0; }
@@ -53,29 +73,43 @@
     }
     button:hover { background: #6a958c; }
     button:disabled { background: #aaa; cursor: wait; }
+    .error {
+      margin-top: 1rem;
+      padding: 0.75rem 1rem;
+      background: #fee;
+      border: 1px solid #fbb;
+      color: #900;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
     footer { margin-top: 2rem; font-size: 0.8rem; color: #999; text-align: center; }
   </style>
 </head>
 <body>
-  <h1>PDF to DOCX converter</h1>
-  <p class="lead">Upload a PDF and download an editable Word document.</p>
+  <nav class="lang-switcher" aria-label="Language">
+    <a href="?lang=sk" class="{% if lang == 'sk' %}active{% endif %}">SK</a>
+    <a href="?lang=en" class="{% if lang == 'en' %}active{% endif %}">EN</a>
+  </nav>
+
+  <h1>{{ t.heading }}</h1>
+  <p class="lead">{{ t.lead }}</p>
 
   <form action="{{ url_for('convert') }}" method="post" enctype="multipart/form-data" id="form">
     <label class="field">
-      PDF file
+      {{ t.pdf_file_label }}
       <input type="file" name="pdf" accept="application/pdf" required>
     </label>
 
-    {% if tesseract_langs %}
+    {% if ocr_options %}
     <label class="checkbox">
       <input type="checkbox" name="ocr" id="ocr">
-      Apply OCR (for scanned PDFs)
+      {{ t.ocr_checkbox }}
     </label>
     <label class="checkbox" id="ocr-lang-row" style="margin-left: 1.5rem;">
-      OCR language:
+      {{ t.ocr_lang_label }}
       <select name="ocr_language" id="ocr-lang-select" disabled>
-        {% for code in tesseract_langs %}
-          <option value="{{ code }}"{% if code == 'eng' %} selected{% endif %}>{{ code }}</option>
+        {% for code, display in ocr_options %}
+          <option value="{{ code }}"{% if code == ocr_default %} selected{% endif %}>{{ display }}</option>
         {% endfor %}
       </select>
     </label>
@@ -83,35 +117,98 @@
 
     <label class="checkbox">
       <input type="checkbox" name="no_stream_tables" checked>
-      Detect only tables with visible borders (recommended)
+      {{ t.no_stream_checkbox }}
     </label>
 
-    <button type="submit" id="btn">Convert</button>
+    <button type="submit" id="btn">{{ t.convert_button }}</button>
+    <div id="error" class="error" style="display:none"></div>
   </form>
 
   <footer>
-    Max upload size: 50 MB
+    {{ t.max_upload }}
     <br>
-    {{ app_codename }} v{{ app_version }} ({{ app_release_date }}) — by {{ app_author }}
+    {{ app_codename }} v{{ app_version }} ({{ app_release_date }}) — {{ t.by }} {{ app_author }}
   </footer>
 
   <script>
-    // Disable the button on submit so the user can't double-click
-    // during a long conversion.
-    document.getElementById('form').addEventListener('submit', function () {
-      var btn = document.getElementById('btn');
-      btn.disabled = true;
-      btn.textContent = 'Converting…';
-    });
+    // Localized strings exposed to JS — keeps the translation logic in
+    // one place (server-side WEB_TRANSLATIONS).
+    const T = {
+      converting: {{ t.converting_text|tojson }},
+      convert:    {{ t.convert_button|tojson }},
+    };
 
-    // Enable/disable the OCR language select to mirror the OCR checkbox.
-    var ocrCheckbox = document.getElementById('ocr');
-    var ocrSelect = document.getElementById('ocr-lang-select');
+    // OCR language picker — enable/disable to mirror the OCR checkbox.
+    const ocrCheckbox = document.getElementById('ocr');
+    const ocrSelect = document.getElementById('ocr-lang-select');
     if (ocrCheckbox && ocrSelect) {
       ocrCheckbox.addEventListener('change', function () {
         ocrSelect.disabled = !ocrCheckbox.checked;
       });
     }
+
+    // Submit via fetch + client-side blob download.
+    //
+    // Why not let the browser do a normal form submit? Because the
+    // response is `Content-Disposition: attachment` — the browser
+    // downloads the file but does NOT navigate, so any JS state set in
+    // the submit handler (disabled button, "Converting…" text) stays
+    // forever. With fetch we know exactly when the response arrives
+    // and can re-enable the button in `finally`.
+    const form = document.getElementById('form');
+    const btn = document.getElementById('btn');
+    const errBox = document.getElementById('error');
+
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      errBox.style.display = 'none';
+      btn.disabled = true;
+      btn.textContent = T.converting;
+
+      try {
+        const formData = new FormData(form);
+        const response = await fetch(form.action, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          // Try to extract a useful error message; fall back to status.
+          let msg;
+          try {
+            const text = await response.text();
+            // Werkzeug's abort() returns HTML — strip tags crudely.
+            msg = text.replace(/<[^>]+>/g, '').trim().split('\n').pop() || ('HTTP ' + response.status);
+          } catch (_) {
+            msg = 'HTTP ' + response.status;
+          }
+          throw new Error(msg);
+        }
+
+        // Pull filename from Content-Disposition (RFC 5987 simple form).
+        const disposition = response.headers.get('Content-Disposition') || '';
+        const match = disposition.match(/filename="?([^";]+)"?/i);
+        const filename = match ? match[1] : 'output.docx';
+
+        // Download via a synthetic anchor click.
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        // Defer revoke so the browser has time to start the download.
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      } catch (err) {
+        errBox.textContent = err.message || String(err);
+        errBox.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = T.convert;
+      }
+    });
   </script>
 </body>
 </html>
